@@ -1,23 +1,38 @@
 package scheduler
 
 import (
+	"errors"
 	"log/slog"
 	"schdeuler/src/job"
+	"schdeuler/src/misc"
 	"schdeuler/src/worker"
 )
 
 type Scheduler struct {
 	workers worker.WorkerManager
+	jobs    chan *job.Job
 }
 
-func NewSchdular(workers worker.WorkerManager) Scheduler {
-	return Scheduler{workers: workers}
-
+func NewSchdular(workers worker.WorkerManager, jobQueueSize int) Scheduler {
+	jobs := make(chan *job.Job, jobQueueSize)
+	return Scheduler{workers: workers, jobs: jobs}
 }
 
 type WorkerRegistration struct {
 	IP string
-	ID string
+}
+
+func (s *Scheduler) CreateJob(args *job.NewJob, reply *string) error {
+	job, err := job.CreateJob(args.Duration)
+
+	if err != nil {
+		return err
+	}
+
+	s.jobs <- job
+
+	*reply = job.ID
+	return nil
 }
 
 func (s *Scheduler) CompleteJob(args *job.JobResult, reply *bool) error {
@@ -34,32 +49,38 @@ func (s *Scheduler) CompleteJob(args *job.JobResult, reply *bool) error {
 		"success",
 		args.Status,
 	)
-
 	return nil
 }
 
-func (s *Scheduler) RegisterWorker(args *WorkerRegistration, reply *bool) error {
-	*reply = s.workers.NewWorker(args.IP, args.ID)
+func (s *Scheduler) RegisterWorker(args *WorkerRegistration, reply *string) error {
+	id, err := misc.GenID()
+	if err != nil {
+		return err
+	}
+	ok := s.workers.NewWorker(args.IP, id)
+	if !ok {
+		return errors.New("failed to creat worker")
+	}
 	slog.Info(
 		"registered",
 		"type",
 		"worker",
 		"workerID",
-		args.ID,
+		id,
 		"workerIP",
 		args.IP,
 		"success",
 		reply,
 	)
+	*reply = id
 	return nil
 }
 
-func (s *Scheduler) Run(jobs <-chan job.Job) {
+func (s *Scheduler) Run() {
 	for {
-		job := <-jobs
+		job := <-s.jobs
 		worker := s.workers.GetWorker()
 		ok := worker.AssignJob(job)
 		slog.Info("assigned", "type", "job", "jobID", job.ID, "workerID", worker.ID, "success", ok)
-
 	}
 }

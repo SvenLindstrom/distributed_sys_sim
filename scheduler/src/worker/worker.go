@@ -2,7 +2,6 @@ package worker
 
 import (
 	"schdeuler/src/job"
-	"schdeuler/src/networkInterface"
 )
 
 type WorkerState int
@@ -26,7 +25,7 @@ type Worker struct {
 	ID     string
 	state  WorkerState
 	job    string
-	client networkinterface.RPCClient
+	client RPCClient
 }
 
 func (w *Worker) JobFinished() {
@@ -34,7 +33,7 @@ func (w *Worker) JobFinished() {
 	w.job = ""
 }
 
-func (w *Worker) AssignJob(job job.Job) bool {
+func (w *Worker) AssignJob(job *job.Job) bool {
 	var ok bool
 	w.client.Call("Worker.AssignJob", &job, &ok)
 	if ok {

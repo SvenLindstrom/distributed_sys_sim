@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 	"net/rpc"
-	"schdeuler/src/job"
 	"schdeuler/src/misc"
 	"schdeuler/src/scheduler"
 	"schdeuler/src/worker"
@@ -24,14 +23,12 @@ func main() {
 
 	println("logger ready")
 
-	jobs := make(chan job.Job, JobQueueSize)
-
 	workerManager := worker.NewWorkerManager(WorkerQueueSize)
 
-	scheduler := scheduler.NewSchdular(workerManager)
+	scheduler := scheduler.NewSchdular(workerManager, JobQueueSize)
 
 	println("scheduler created")
-	go scheduler.Run(jobs)
+	go scheduler.Run()
 
 	println("scheduler started")
 	rpc.Register(&scheduler)
