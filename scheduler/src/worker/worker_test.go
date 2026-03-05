@@ -7,7 +7,7 @@ import (
 
 func TestWorkerAssignJob(t *testing.T) {
 	worker := Worker{IP: "ip Address", ID: "testID", job: "", state: IDLE, client: &MockRPCClient{}}
-	job := job.Job{ID: "jobID", Duration: 123}
+	job := &job.Job{ID: "jobID", Duration: 123}
 
 	ok := worker.AssignJob(job)
 	if !ok {

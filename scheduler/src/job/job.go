@@ -7,18 +7,22 @@ type Job struct {
 	Duration int
 }
 
+type NewJob struct {
+	Duration int
+}
+
 type JobResult struct {
 	JobID    string
 	WorkerID string
 	Status   string
 }
 
-func NewJob(duration int) (Job, error) {
+func CreateJob(duration int) (*Job, error) {
 	id, err := misc.GenID()
 	if err != nil {
-		return Job{}, err
+		return &Job{}, err
 	}
-	job := Job{id, duration}
+	job := &Job{id, duration}
 
 	return job, nil
 }

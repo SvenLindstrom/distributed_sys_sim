@@ -70,7 +70,7 @@ func TestJobCompleted(t *testing.T) {
 	}
 	worker := manager.GetWorker()
 
-	job := job.Job{ID: "jobID", Duration: 123}
+	job := &job.Job{ID: "jobID", Duration: 123}
 
 	worker.AssignJob(job)
 
