@@ -19,11 +19,11 @@ func (md *MockDialer) Dial(address string) (RPCClient, error) {
 	return &MockRPCClient{}, nil
 }
 
-func newTestWorkerManager() WorkerManager {
+func newTestWorkerManager() WorkerManagerImple {
 	tmap := make(map[string]*Worker)
 	tchan := make(chan *Worker, 2)
 
-	return WorkerManager{tmap, tchan, &MockDialer{}}
+	return WorkerManagerImple{tmap, tchan, &MockDialer{}}
 }
 
 func TestNewWorker(t *testing.T) {

@@ -1,6 +1,12 @@
 package worker
 
-type WorkerManager struct {
+type WorkerManager interface {
+	NewWorker(address string, id string) bool
+	JobCompleted(workerID string)
+	GetWorker() *Worker
+}
+
+type WorkerManagerImple struct {
 	workers   map[string]*Worker
 	ready     chan *Worker
 	rpcDialer RPCDialer
@@ -10,10 +16,10 @@ func NewWorkerManager(queueSize int) WorkerManager {
 	workers := make(chan *Worker, queueSize)
 	wmap := make(map[string]*Worker)
 	dialer := RealRPCDialer{}
-	return WorkerManager{wmap, workers, &dialer}
+	return &WorkerManagerImple{wmap, workers, &dialer}
 }
 
-func (w *WorkerManager) NewWorker(address string, id string) bool {
+func (w *WorkerManagerImple) NewWorker(address string, id string) bool {
 	client, err := w.rpcDialer.Dial(address)
 	if err != nil {
 		println(err.Error())
@@ -25,13 +31,13 @@ func (w *WorkerManager) NewWorker(address string, id string) bool {
 	return true
 }
 
-func (w *WorkerManager) JobCompleted(workerID string) {
+func (w *WorkerManagerImple) JobCompleted(workerID string) {
 	worker := w.workers[workerID]
 	worker.JobFinished()
 	w.ready <- worker
 }
 
-func (w *WorkerManager) GetWorker() *Worker {
+func (w *WorkerManagerImple) GetWorker() *Worker {
 	status := OFFLINE
 	var worker *Worker
 	for status == OFFLINE {
