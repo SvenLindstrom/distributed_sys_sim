@@ -1,0 +1,8 @@
+
+services:
+  scheduler:
+    build:
+      context: .
+      dockerfile: ./docker/scheduler.Dockerfile
+    volumes:
+      - ./logs/:/app/logs/

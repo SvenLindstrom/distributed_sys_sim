@@ -7,7 +7,7 @@ import (
 
 func Loginit() (*os.File, error) {
 
-	f, err := os.OpenFile("./Logs/job.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile("./logs/job.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
