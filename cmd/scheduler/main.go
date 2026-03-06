@@ -14,7 +14,7 @@ const WorkerQueueSize = 3
 
 func main() {
 
-	f, err := misc.Loginit()
+	f, err := misc.Loginit("scheduler")
 
 	if err != nil {
 		log.Fatal(err)
