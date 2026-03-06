@@ -1,13 +1,16 @@
 package misc
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 )
 
-func Loginit() (*os.File, error) {
+func Loginit(component string) (*os.File, error) {
 
-	f, err := os.OpenFile("./Logs/job.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	fileName := fmt.Sprintf("./logs/%s.log", component)
+
+	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}
@@ -16,7 +19,7 @@ func Loginit() (*os.File, error) {
 		slog.NewJSONHandler(f, nil),
 	)
 
-	logger := base.With("component", "scheduler")
+	logger := base.With("component", component)
 
 	slog.SetDefault(logger)
 
