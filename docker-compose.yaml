@@ -6,3 +6,11 @@ services:
       dockerfile: ./docker/scheduler.Dockerfile
     volumes:
       - ./logs/:/app/logs/
+  worker:
+    build:
+      context: .
+      dockerfile: ./docker/worker.Dockerfile
+    volumes:
+      - ./logs/:/app/logs
+    depends_on:
+      - scheduler
