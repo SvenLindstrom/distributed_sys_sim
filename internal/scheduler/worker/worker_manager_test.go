@@ -34,9 +34,6 @@ func TestNewWorker(t *testing.T) {
 		t.Fatal("expected success")
 	}
 	worker := manager.workers["testID"]
-	if worker.IP != "ip Address" {
-		t.Fatal("ip not set correctly")
-	}
 	if worker.ID != "testID" {
 		t.Fatal("id not set correctly")
 	}
@@ -55,9 +52,7 @@ func TestGetWorker(t *testing.T) {
 		t.Fatal("expected success")
 	}
 	worker := manager.GetWorker()
-	if worker.IP != "ip Address" {
-		t.Fatal(worker)
-	}
+
 	if worker.ID != "testID" {
 		t.Fatal("id not set correctly")
 	}

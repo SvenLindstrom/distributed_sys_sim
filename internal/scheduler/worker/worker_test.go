@@ -6,7 +6,7 @@ import (
 )
 
 func TestWorkerAssignJob(t *testing.T) {
-	worker := Worker{IP: "ip Address", ID: "testID", job: "", state: IDLE, client: &MockRPCClient{}}
+	worker := Worker{ID: "testID", job: "", state: IDLE, client: &MockRPCClient{}}
 	job := &job.Job{ID: "jobID", Duration: 123}
 
 	ok := worker.AssignJob(job)
@@ -23,7 +23,6 @@ func TestWorkerAssignJob(t *testing.T) {
 
 func TestWorkerJobFinished(t *testing.T) {
 	worker := Worker{
-		IP:     "ip Address",
 		ID:     "testID",
 		job:    "jobID",
 		state:  BUSY,
