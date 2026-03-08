@@ -29,7 +29,7 @@ func (w *WorkerManagerImple) NewWorker(address string, id string) bool {
 		println(err.Error())
 		return false
 	}
-	worker := &Worker{address, id, IDLE, "", client}
+	worker := &Worker{id, IDLE, "", client}
 	w.workers[worker.ID] = worker
 	w.ready <- worker
 	return true

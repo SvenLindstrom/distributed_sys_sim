@@ -32,6 +32,14 @@ func (s *Scheduler) CreateJob(args *job.NewJob, reply *string) error {
 	s.jobs <- job
 
 	*reply = job.ID
+	slog.Info(
+		"create",
+		"type",
+		"job",
+		"jobID",
+		job.ID,
+	)
+
 	return nil
 }
 
@@ -69,8 +77,6 @@ func (s *Scheduler) RegisterWorker(args *WorkerRegistration, reply *string) erro
 		id,
 		"workerIP",
 		args.IP,
-		"success",
-		reply,
 	)
 	*reply = id
 	return nil

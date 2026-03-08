@@ -22,7 +22,6 @@ var stateName = map[WorkerState]string{
 }
 
 type Worker struct {
-	IP     string
 	ID     string
 	state  WorkerState
 	job    string
