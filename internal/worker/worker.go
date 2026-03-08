@@ -55,7 +55,7 @@ func (w *Worker) Run() error {
 		return err
 	}
 
-	return nil
+	select {}
 }
 
 func (w *Worker) getClient() error {
@@ -84,7 +84,7 @@ func (w *Worker) AssignJob(job *job.Job, reply *bool) error {
 
 func (w *Worker) executeJob(job job.Job) {
 	// simulate job
-	time.Sleep(time.Duration(job.Duration))
+	time.Sleep(time.Duration(job.Duration) * time.Millisecond)
 
 	w.state = IDLE
 	w.currentJob = ""
