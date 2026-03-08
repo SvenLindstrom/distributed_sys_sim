@@ -4,10 +4,11 @@ WORKDIR /app
 
 COPY go.mod ./
 
-COPY ./internal/worker ./internal/worker
 COPY ./internal/misc ./internal/misc
 COPY ./internal/network ./internal/network
 COPY ./internal/job ./internal/job
+COPY ./internal/worker ./internal/worker
+COPY ./internal/scheduler ./internal/scheduler
 
 COPY ./cmd/worker ./cmd/worker
 
