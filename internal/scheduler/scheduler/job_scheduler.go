@@ -18,10 +18,6 @@ func NewSchdular(workers worker.WorkerManager, jobQueueSize int) Scheduler {
 	return Scheduler{workers: workers, jobs: jobs}
 }
 
-type WorkerRegistration struct {
-	IP string
-}
-
 func (s *Scheduler) CreateJob(args *job.NewJob, reply *string) error {
 	job, err := job.CreateJob(args.Duration)
 
@@ -60,12 +56,12 @@ func (s *Scheduler) CompleteJob(args *job.JobResult, reply *bool) error {
 	return nil
 }
 
-func (s *Scheduler) RegisterWorker(args *WorkerRegistration, reply *string) error {
+func (s *Scheduler) RegisterWorker(args *string, reply *string) error {
 	id, err := misc.GenID()
 	if err != nil {
 		return err
 	}
-	ok := s.workers.NewWorker(args.IP, id)
+	ok := s.workers.NewWorker(*args, id)
 	if !ok {
 		return errors.New("failed to creat worker")
 	}
@@ -76,7 +72,7 @@ func (s *Scheduler) RegisterWorker(args *WorkerRegistration, reply *string) erro
 		"workerID",
 		id,
 		"workerIP",
-		args.IP,
+		*args,
 	)
 	*reply = id
 	return nil
