@@ -15,5 +15,6 @@ services:
       dockerfile: ./docker/worker.Dockerfile
     volumes:
       - ./logs/:/app/logs
+    env_file: "./config"
     depends_on:
       - scheduler
