@@ -1,4 +1,5 @@
-WORKERS ?= 5
+WORKERS ?= 3
+
 
 start:
 	sudo docker compose up --scale worker=${WORKERS}
@@ -10,3 +11,6 @@ restart: stop start
 
 build:
 	sudo docker compose build
+
+reset-logs:
+	rm -rf logs/*
