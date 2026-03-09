@@ -3,6 +3,7 @@ package worker
 import (
 	"dssim/internal/job"
 	"dssim/internal/network"
+	"log"
 )
 
 type WorkerState int
@@ -35,7 +36,11 @@ func (w *Worker) JobFinished() {
 
 func (w *Worker) AssignJob(job *job.Job) bool {
 	var ok bool
-	w.client.Call("Worker.AssignJob", &job, &ok)
+	err := w.client.Call("Worker.AssignJob", &job, &ok)
+	if err != nil {
+		log.Println(err.Error())
+		return false
+	}
 	if ok {
 		w.job = job.ID
 		w.state = BUSY
