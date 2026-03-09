@@ -3,7 +3,6 @@ package worker
 import (
 	"dssim/internal/job"
 	"dssim/internal/network"
-	"dssim/internal/scheduler/scheduler"
 	"log/slog"
 	"net/http"
 	"net/rpc"
@@ -109,8 +108,7 @@ func (w *Worker) executeJob(job job.Job) {
 func (w *Worker) registerWorker() error {
 	// call Scheduler to register Worker
 	var workerID string
-	args := scheduler.WorkerRegistration{IP: w.address}
-	err := w.schedulerClient.Call("Scheduler.RegisterWorker", &args, &workerID)
+	err := w.schedulerClient.Call("Scheduler.RegisterWorker", &w.address, &workerID)
 	if err != nil {
 		return err
 	}
