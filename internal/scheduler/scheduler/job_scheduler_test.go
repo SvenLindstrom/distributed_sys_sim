@@ -49,7 +49,7 @@ func TestCompleteJob(t *testing.T) {
 
 func TestRegisterWorker(t *testing.T) {
 	scheduler := NewSchdular(&MockWorkerManager{}, 3)
-	reg := WorkerRegistration{"testIP"}
+	reg := "testIP"
 
 	var id string
 

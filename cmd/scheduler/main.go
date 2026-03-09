@@ -7,25 +7,36 @@ import (
 	"log"
 	"net/http"
 	"net/rpc"
+	"os"
+	"strconv"
 )
-
-const JobQueueSize = 3
-const WorkerQueueSize = 3
 
 func main() {
 
 	f, err := misc.Loginit("scheduler")
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err.Error())
 	}
 	defer f.Close()
 
+	port := ":" + os.Getenv("SCHEDULER_PORT")
+	jobQueueSize, err := strconv.Atoi(os.Getenv("JOB_Q_SIZE"))
+	if err != nil {
+		log.Println("job q size not set")
+		jobQueueSize = 3
+	}
+	workerQueueSize, err := strconv.Atoi(os.Getenv("WORKER_Q_SIZE"))
+	if err != nil {
+		log.Println("worker q size not set")
+		workerQueueSize = 1
+	}
+
 	println("logger ready")
 
-	workerManager := worker.NewWorkerManager(WorkerQueueSize)
+	workerManager := worker.NewWorkerManager(workerQueueSize)
 
-	scheduler := scheduler.NewSchdular(workerManager, JobQueueSize)
+	scheduler := scheduler.NewSchdular(workerManager, jobQueueSize)
 
 	println("scheduler created")
 	go scheduler.Run()
@@ -35,5 +46,8 @@ func main() {
 	rpc.HandleHTTP()
 
 	println("rcp server ready")
-	http.ListenAndServe(":8080", nil)
+	err = http.ListenAndServe(port, nil)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 }

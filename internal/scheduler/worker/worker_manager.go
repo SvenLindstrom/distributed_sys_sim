@@ -2,6 +2,7 @@ package worker
 
 import (
 	"dssim/internal/network"
+	"log"
 )
 
 type WorkerManager interface {
@@ -26,7 +27,7 @@ func NewWorkerManager(queueSize int) WorkerManager {
 func (w *WorkerManagerImple) NewWorker(address string, id string) bool {
 	client, err := w.rpcDialer.Dial(address)
 	if err != nil {
-		println(err.Error())
+		log.Println(err.Error())
 		return false
 	}
 	worker := &Worker{id, IDLE, "", client}
