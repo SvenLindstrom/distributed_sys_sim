@@ -8,6 +8,7 @@ COPY ./internal/scheduler ./internal/scheduler
 COPY ./internal/misc ./internal/misc
 COPY ./internal/network ./internal/network
 COPY ./internal/job ./internal/job
+COPY ./internal/fault ./internal/fault
 
 COPY ./cmd/scheduler ./cmd/scheduler
 
