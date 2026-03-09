@@ -1,11 +1,12 @@
 WORKERS ?= 5
 
 start:
-	docker compose up --scale worker=${WORKERS}
+	sudo docker compose up --scale worker=${WORKERS}
 
 stop:
-	docker compose down
+	sudo docker compose down
 
-restart:
-	docker compose down
-	docker compose up --scale worker=${WORKERS}
+restart: stop start
+
+build:
+	sudo docker compose build
