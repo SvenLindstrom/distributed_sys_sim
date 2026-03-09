@@ -3,6 +3,7 @@ package scheduler
 import (
 	"dssim/internal/job"
 	"dssim/internal/misc"
+	"dssim/internal/network"
 	"dssim/internal/scheduler/worker"
 	"errors"
 	"log/slog"
@@ -11,23 +12,23 @@ import (
 type Scheduler struct {
 	workers worker.WorkerManager
 	jobs    chan *job.Job
+	client  network.RPCClient
 }
 
 func NewSchdular(workers worker.WorkerManager, jobQueueSize int) Scheduler {
+	dialer := network.RealRPCDialer{}
+
+	client, _ := dialer.Dial("Generator:8081")
+
 	jobs := make(chan *job.Job, jobQueueSize)
-	return Scheduler{workers: workers, jobs: jobs}
+	return Scheduler{workers: workers, jobs: jobs, client: client}
 }
 
-func (s *Scheduler) CreateJob(args *job.NewJob, reply *string) error {
-	job, err := job.CreateJob(args.Duration)
-
-	if err != nil {
-		return err
-	}
+func (s *Scheduler) CreateJob(job *job.Job, reply *bool) error {
 
 	s.jobs <- job
 
-	*reply = job.ID
+	*reply = true
 	slog.Info(
 		"create",
 		"type",
@@ -39,8 +40,14 @@ func (s *Scheduler) CreateJob(args *job.NewJob, reply *string) error {
 	return nil
 }
 
+func (s *Scheduler) notifyGenerator(jobId string) {
+	var ok bool
+	s.client.Call("Generator.JobCompleted", &jobId, &ok)
+}
+
 func (s *Scheduler) CompleteJob(args *job.JobResult, reply *bool) error {
 	s.workers.JobCompleted(args.WorkerID)
+	go s.notifyGenerator(args.JobID)
 	*reply = true
 	slog.Info(
 		"completed",
@@ -79,6 +86,10 @@ func (s *Scheduler) RegisterWorker(args *string, reply *string) error {
 }
 
 func (s *Scheduler) Run() {
+
+	var ok bool
+	s.client.Call("Generator.ReadyForWork", "", &ok)
+
 	for {
 		job := <-s.jobs
 		worker := s.workers.GetWorker()

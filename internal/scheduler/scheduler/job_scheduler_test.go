@@ -22,11 +22,11 @@ func (mm *MockWorkerManager) GetWorker() *worker.Worker {
 
 func TestCreatJob(t *testing.T) {
 	scheduler := NewSchdular(&MockWorkerManager{}, 3)
-	newJob := job.NewJob{Duration: 10}
-	var reply string
-	scheduler.CreateJob(&newJob, &reply)
+	newJob, _ := job.CreateJob(10)
+	var ok bool
+	scheduler.CreateJob(newJob, &ok)
 
-	if reply == "" {
+	if !ok {
 		t.Fatal("idea not replyed")
 	}
 	job := <-scheduler.jobs
