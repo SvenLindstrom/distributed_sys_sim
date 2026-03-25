@@ -6,7 +6,7 @@ COPY go.mod ./
 
 COPY ./internal/misc ./internal/misc
 COPY ./internal/network ./internal/network
-COPY ./internal/job ./internal/job
+COPY ./internal/task ./internal/task
 COPY ./internal/worker ./internal/worker
 
 COPY ./cmd/worker ./cmd/worker

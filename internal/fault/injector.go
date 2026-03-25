@@ -11,6 +11,7 @@ func InjectCrash(durationStr string) {
 	if err != nil || duration <= 0 {
 		slog.Info(
 			"Crash injection disabled because of invalid duration value",
+			"type", "fault injector",
 			"duration", duration,
 		)
 		return
@@ -22,6 +23,7 @@ func InjectCrash(durationStr string) {
 func crash(duration time.Duration) {
 	slog.Info(
 		"Fault injection scheduler for Scheduler process crash",
+		"type", "fault injector",
 		"after", duration,
 	)
 
@@ -30,6 +32,7 @@ func crash(duration time.Duration) {
 
 	slog.Info(
 		"Scheduler crashing now",
+		"type", "fault injector",
 	)
 
 	// crash

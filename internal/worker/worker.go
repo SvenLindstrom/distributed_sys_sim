@@ -1,8 +1,8 @@
 package worker
 
 import (
-	"dssim/internal/job"
 	"dssim/internal/network"
+	"dssim/internal/task"
 	"log/slog"
 	"net/http"
 	"net/rpc"
@@ -21,7 +21,7 @@ type Worker struct {
 	address         string
 	SchedulerAddr   string
 	state           WorkerState
-	currentJob      string
+	currentTask     string
 	schedulerClient network.RPCClient
 }
 
@@ -71,32 +71,32 @@ func (w *Worker) getClient() error {
 
 // requests from Scheduler
 
-func (w *Worker) AssignJob(job *job.Job, reply *bool) error {
-	w.currentJob = job.ID
+func (w *Worker) AssignTask(task *task.Task, reply *bool) error {
+	w.currentTask = task.ID
 	w.state = BUSY
 
-	go w.executeJob(*job)
+	go w.executeTask(*task)
 
 	*reply = true
 	return nil
 }
 
-func (w *Worker) executeJob(job job.Job) {
-	// simulate job
-	time.Sleep(time.Duration(job.Duration) * time.Millisecond)
+func (w *Worker) executeTask(task task.Task) {
+	// simulate task
+	time.Sleep(time.Duration(task.Duration) * time.Millisecond)
 
 	w.state = IDLE
-	w.currentJob = ""
+	w.currentTask = ""
 
 	// report to Scheduler
-	err := w.completeJob(job.ID)
+	err := w.completeTask(task.ID)
 	if err != nil {
 		slog.Error(
-			"Job completion could not be reported",
+			"Task completion could not be reported",
 			"worker",
 			w.ID,
-			"job",
-			job.ID,
+			"task",
+			task.ID,
 			"error",
 			err,
 		)
@@ -128,28 +128,28 @@ func (w *Worker) registerWorker() error {
 	return nil
 }
 
-func (w *Worker) completeJob(jobID string) error {
-	// define JobResult
-	args := job.JobResult{
-		JobID:    jobID,
+func (w *Worker) completeTask(taskID string) error {
+	// define TaskResult
+	args := task.TaskResult{
+		TaskID:   taskID,
 		WorkerID: w.ID,
 		Status:   "completed",
 	}
 
-	// call Scheduler to report job completion
+	// call Scheduler to report task completion
 	var reply bool
-	err := w.schedulerClient.Call("Scheduler.CompleteJob", &args, &reply)
+	err := w.schedulerClient.Call("Scheduler.CompleteTask", &args, &reply)
 	if err != nil {
 		return err
 	}
 
 	// log
 	slog.Info(
-		"Job completed and reported",
+		"Task completed and reported",
 		"worker",
 		w.ID,
-		"job",
-		jobID,
+		"task",
+		taskID,
 	)
 
 	return nil
