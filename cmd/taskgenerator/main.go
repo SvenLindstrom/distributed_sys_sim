@@ -42,7 +42,7 @@ func main() {
 
 	rpc.Register(&generator)
 	rpc.HandleHTTP()
-
+	println("generator ready")
 	err = http.ListenAndServe(port, nil)
 
 	if err != nil {

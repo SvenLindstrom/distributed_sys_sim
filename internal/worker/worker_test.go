@@ -40,7 +40,10 @@ func TestNewWorker(t *testing.T) {
 	}
 
 	if w.state != IDLE {
-		t.Errorf("Expected state IDLE, actual %v", w.state) // check how to print actual string value
+		t.Errorf(
+			"Expected state IDLE, actual %v",
+			w.state,
+		) // check how to print actual string value
 	}
 }
 
@@ -111,7 +114,12 @@ func TestAssignJob(t *testing.T) {
 	}
 
 	if w.currentJob != "mock-job-id" || w.state != BUSY {
-		t.Errorf("Expected currentJob '%s' and state BUSY, actual currentJob '%s' and state '%v'", job.ID, w.currentJob, w.state)
+		t.Errorf(
+			"Expected currentJob '%s' and state BUSY, actual currentJob '%s' and state '%v'",
+			job.ID,
+			w.currentJob,
+			w.state,
+		)
 	}
 }
 

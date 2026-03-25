@@ -1,8 +1,8 @@
 package generator
 
 import (
-	"dssim/internal/job"
 	"dssim/internal/network"
+	"dssim/internal/task"
 	"log"
 	"log/slog"
 	"os"
@@ -10,25 +10,30 @@ import (
 )
 
 type Generator struct {
-	duration int
-	interval int
-	timout   time.Duration
-	jobTable JobTable
+	duration  int
+	interval  int
+	timout    time.Duration
+	taskTable TaskTable
 }
 
 func NewGnerator(duration int, interval int, timeout int) Generator {
-	return Generator{duration, interval, time.Duration(timeout), JobTable{make(map[string]JobRec)}}
+	return Generator{
+		duration,
+		interval,
+		time.Duration(timeout),
+		TaskTable{make(map[string]*TaskRec)},
+	}
 }
 
-func (g *Generator) JobCompleted(jobId *string, ok *bool) error {
-	g.jobTable.JobDone(*jobId)
+func (g *Generator) TaskCompleted(taskId *string, ok *bool) error {
+	g.taskTable.TaskDone(*taskId)
 	*ok = true
 	slog.Info(
-		"job done",
+		"done",
 		"type",
-		"job",
-		"jobID",
-		*jobId,
+		"task",
+		"taskID",
+		*taskId,
 	)
 	return nil
 }
@@ -41,8 +46,11 @@ func (g *Generator) ReadyForWork(address *string, ok *bool) error {
 
 	if err != nil {
 		log.Fatal(err.Error())
+	} else {
+		println("connected to scheduler")
 	}
 	go g.Run(client)
+	println("task generation started")
 
 	*ok = true
 	return nil
@@ -50,33 +58,38 @@ func (g *Generator) ReadyForWork(address *string, ok *bool) error {
 
 func (g *Generator) Run(client network.RPCClient) {
 	for {
-		job, err := job.CreateJob(g.duration)
+		task, err := task.CreateTask(g.duration)
 		if err != nil {
 			println("")
 		}
 
 		var ok bool
 
-		client.Call("Scheduler.CreateJob", job, &ok)
+		client.Call("Scheduler.CreateTask", task, &ok)
 
-		g.jobTable.JobSubmitted(*job)
+		g.taskTable.TaskSubmitted(*task)
 		slog.Info(
-			"job submitted",
+			"submitted",
 			"type",
-			"job",
-			"jobID",
-			job.ID,
+			"task",
+			"taskID",
+			task.ID,
 		)
 
-		for _, job := range g.jobTable.Jobs {
-			if time.Now().Sub(job.Submit_time) > g.timout*time.Second {
-				client.Call("Scheduler.CreateJob", job, &ok)
+		for _, task := range g.taskTable.Tasks {
+
+			if task.done {
+				g.taskTable.RemoveTask(task)
+			} else if time.Now().Sub(task.Submit_time) > g.timout*time.Second {
+				client.Call("Scheduler.CreateTask", task, &ok)
+				g.taskTable.ReSubmit(task)
+
 				slog.Info(
-					"job re-submitted",
+					"re-submitted",
 					"type",
-					"job",
-					"jobID",
-					job.Job.ID,
+					"task",
+					"taskID",
+					task.Task.ID,
 				)
 			}
 		}
