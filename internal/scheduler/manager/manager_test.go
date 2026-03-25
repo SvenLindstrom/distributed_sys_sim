@@ -1,4 +1,4 @@
-package scheduler
+package manager
 
 import (
 	"dssim/internal/job"
@@ -29,7 +29,7 @@ func TestCreatJob(t *testing.T) {
 	if !ok {
 		t.Fatal("idea not replyed")
 	}
-	job := <-scheduler.jobs
+	job := <-scheduler.tasks
 
 	if job.Duration != 10 {
 		t.Fatal("job not created properly")

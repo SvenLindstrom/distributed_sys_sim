@@ -1,8 +1,8 @@
 package worker
 
 import (
-	"dssim/internal/job"
 	"dssim/internal/network"
+	"dssim/internal/task"
 	"log"
 )
 
@@ -25,24 +25,24 @@ var stateName = map[WorkerState]string{
 type Worker struct {
 	ID     string
 	state  WorkerState
-	job    string
+	task   string
 	client network.RPCClient
 }
 
-func (w *Worker) JobFinished() {
+func (w *Worker) TaskFinished() {
 	w.state = READY
-	w.job = ""
+	w.task = ""
 }
 
-func (w *Worker) AssignJob(job *job.Job) bool {
+func (w *Worker) AssignTask(task *task.Task) bool {
 	var ok bool
-	err := w.client.Call("Worker.AssignJob", &job, &ok)
+	err := w.client.Call("Worker.AssignTask", &task, &ok)
 	if err != nil {
 		log.Println(err.Error())
 		return false
 	}
 	if ok {
-		w.job = job.ID
+		w.task = task.ID
 		w.state = BUSY
 	}
 	return ok
