@@ -9,24 +9,25 @@ import (
 type Manager struct {
 	workers      worker.WorkerManager
 	RpcInterface Scheduler
-	state        *state.SchedulerState
+	state        state.State
+	RunLoop      bool
 }
 
 func NewManager(
 	workers worker.WorkerManager,
-	state *state.SchedulerState,
+	state state.State,
 ) Manager {
 	return Manager{
 		workers:      workers,
 		RpcInterface: NewScheduler(workers, state),
 		state:        state,
+		RunLoop:      true,
 	}
 }
 
 func (s *Manager) Run() {
-	s.RpcInterface.NotifiyGenerator()
 
-	for {
+	for s.RunLoop {
 		task, available := s.state.NextTask()
 		if !available {
 			continue

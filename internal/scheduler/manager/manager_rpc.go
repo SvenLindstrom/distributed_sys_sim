@@ -8,17 +8,18 @@ import (
 	"dssim/internal/task"
 	"errors"
 	"log/slog"
+
+	"github.com/hashicorp/raft"
 )
 
 type Scheduler struct {
 	workers worker.WorkerManager
-	state   *state.SchedulerState
+	state   state.State
 	client  network.RPCClient
 }
 
-func NewScheduler(worker worker.WorkerManager, state *state.SchedulerState) Scheduler {
-	dialer := network.RealRPCDialer{}
-	client, err := dialer.Dial("Generator:8081")
+func NewScheduler(worker worker.WorkerManager, state state.State) Scheduler {
+	client, err := network.RealRPCDialer().Dial("Generator:8081")
 
 	if err != nil {
 		println("failed to dial generator")
@@ -28,9 +29,9 @@ func NewScheduler(worker worker.WorkerManager, state *state.SchedulerState) Sche
 	return Scheduler{worker, state, client}
 }
 
-func (s *Scheduler) NotifiyGenerator() bool {
+func (s *Scheduler) NotifiyGenerator(addr string) bool {
 	var ok bool
-	err := s.client.Call("Generator.ReadyForWork", "", &ok)
+	err := s.client.Call("Generator.ReadyForWork", &addr, &ok)
 
 	if err != nil || !ok {
 		println("failed to connect to generator")
@@ -39,7 +40,11 @@ func (s *Scheduler) NotifiyGenerator() bool {
 }
 
 func (s *Scheduler) CreateTask(task *task.Task, reply *bool) error {
-	s.state.AddTask(task)
+	err := s.state.AddTask(task)
+	if err != nil {
+		*reply = false
+		return err
+	}
 	*reply = true
 	slog.Info(
 		"create",
@@ -94,4 +99,18 @@ func (s *Scheduler) RegisterWorker(args *string, reply *string) error {
 	)
 	*reply = id
 	return nil
+}
+
+func (s *Scheduler) RegisterScheduler(reg *raft.Server, res *bool) error {
+	err := s.state.RegisterScheduler(string(reg.ID), string(reg.Address))
+
+	// res.Err = err
+	// if err != nil {
+	// 	*res = network.RPCRes{Val: "test", Err: err.Error()}
+	// } else {
+	// 	*res = network.RPCRes{Val: "no Teest", Err: ""}
+	// }
+	// res.Val = "test"
+	// println(err.Error())
+	return err
 }
