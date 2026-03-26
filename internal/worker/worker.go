@@ -58,8 +58,8 @@ func (w *Worker) Run() error {
 }
 
 func (w *Worker) getClient() error {
-	dialer := network.RealRPCDialer{}
-	client, err := dialer.Dial(w.SchedulerAddr)
+	client, err := network.RealRPCDialer().Dial(w.SchedulerAddr)
+
 	if err != nil {
 		return err
 	}

@@ -3,6 +3,9 @@ FROM golang:1.25.1 AS builder
 WORKDIR /app
 
 COPY go.mod  ./
+COPY go.sum  ./
+
+RUN go mod download
 
 COPY ./internal/network ./internal/network
 COPY ./internal/task ./internal/task

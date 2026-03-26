@@ -3,8 +3,7 @@ package main
 import (
 	"dssim/internal/fault"
 	"dssim/internal/misc"
-	"dssim/internal/scheduler/scheduler"
-	"dssim/internal/scheduler/worker"
+	"dssim/internal/scheduler"
 	"log"
 	"net/http"
 	"net/rpc"
@@ -35,20 +34,17 @@ func main() {
 
 	println("logger ready")
 
-	workerManager := worker.NewWorkerManager(workerQueueSize)
+	// scheduler := scheduler.NewSchdular(workerQueueSize, jobQueueSize)
+	scheduler := scheduler.NewSchedulerRaft(workerQueueSize, jobQueueSize)
 
-	scheduler := scheduler.NewSchdular(workerManager, jobQueueSize)
-
-	println("scheduler created")
-	go scheduler.Run()
-	println("scheduler started")
+	println("scheduler running")
 
 	// program fault injection
 	duration := os.Getenv("SCHEDULER_CRASH")
 	fault.InjectCrash(duration)
 	println("fault injector started")
 
-	rpc.Register(&scheduler)
+	rpc.Register(&scheduler.RpcInterface)
 	rpc.HandleHTTP()
 
 	println("rcp server ready")

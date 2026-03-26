@@ -7,7 +7,7 @@ import (
 
 type WorkerManager interface {
 	NewWorker(address string, id string) bool
-	JobCompleted(workerID string)
+	TaskCompleted(workerID string)
 	GetWorker() *Worker
 }
 
@@ -20,8 +20,8 @@ type WorkerManagerImple struct {
 func NewWorkerManager(queueSize int) WorkerManager {
 	workers := make(chan *Worker, queueSize)
 	wmap := make(map[string]*Worker)
-	dialer := network.RealRPCDialer{}
-	return &WorkerManagerImple{wmap, workers, &dialer}
+	dialer := network.RealRPCDialer()
+	return &WorkerManagerImple{wmap, workers, dialer}
 }
 
 func (w *WorkerManagerImple) NewWorker(address string, id string) bool {
@@ -36,9 +36,9 @@ func (w *WorkerManagerImple) NewWorker(address string, id string) bool {
 	return true
 }
 
-func (w *WorkerManagerImple) JobCompleted(workerID string) {
+func (w *WorkerManagerImple) TaskCompleted(workerID string) {
 	worker := w.workers[workerID]
-	worker.JobFinished()
+	worker.TaskFinished()
 	w.ready <- worker
 }
 
