@@ -27,14 +27,23 @@ func NewManager(
 
 func (s *Manager) Run() {
 
+	println("scheduler running")
 	for s.RunLoop {
 		task, available := s.state.NextTask()
 		if !available {
 			continue
 		}
 
+		// println(task.ID)
+
 		worker := s.workers.GetWorker()
-		s.state.AssignedTask(task, worker.ID)
+
+		err := s.state.AssignedTask(task, worker.ID)
+
+		if err != nil {
+			println(err.Error())
+		}
+
 		ok := worker.AssignTask(task)
 		slog.Info(
 			"assigned",

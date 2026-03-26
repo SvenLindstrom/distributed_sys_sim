@@ -13,14 +13,18 @@ import (
 )
 
 func NewSchdular(workerQueueSize int, taskQueueSize int) manager.Manager {
-	name := os.Getenv("HOSTNAME")
 	workerManager := worker.NewWorkerManager(workerQueueSize)
 
 	m := manager.NewManager(workerManager, state.NewSchedulerState(taskQueueSize))
+
+	go start(&m)
+	return m
+}
+
+func start(m *manager.Manager) {
+	name := os.Getenv("HOSTNAME")
 	m.RpcInterface.NotifiyGenerator(name)
 	go m.Run()
-
-	return m
 }
 
 func leaderChange(leader <-chan bool, m manager.Manager) {
@@ -97,12 +101,10 @@ func NewSchedulerRaft(workerQueueSize int, taskQueueSize int) manager.Manager {
 			}
 			var res bool
 			for {
-				err := c.Call("Scheduler.RegisterScheduler", &server, &res)
+				err = c.Call("Scheduler.RegisterScheduler", &server, &res)
 
 				if err != nil {
 					println("got error")
-
-					println(err.Error())
 					time.Sleep(1 * time.Second)
 					continue
 				}

@@ -58,10 +58,10 @@ func (s *Scheduler) CreateTask(task *task.Task, reply *bool) error {
 
 func (s *Scheduler) CompleteTask(args *task.TaskResult, reply *bool) error {
 
-	s.workers.TaskCompleted(args.WorkerID)
-	*reply = true
 	s.state.CompleteTask(args.TaskID, args.WorkerID)
+	s.workers.TaskCompleted(args.WorkerID)
 
+	*reply = true
 	var ok bool
 	s.client.Call("Generator.TaskCompleted", &args.TaskID, &ok)
 
@@ -80,6 +80,7 @@ func (s *Scheduler) CompleteTask(args *task.TaskResult, reply *bool) error {
 }
 
 func (s *Scheduler) RegisterWorker(args *string, reply *string) error {
+	println("new worker")
 	id, err := misc.GenID()
 	if err != nil {
 		return err

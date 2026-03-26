@@ -34,15 +34,17 @@ func main() {
 
 	println("logger ready")
 
-	// scheduler := scheduler.NewSchdular(workerQueueSize, jobQueueSize)
-	scheduler := scheduler.NewSchedulerRaft(workerQueueSize, jobQueueSize)
+	scheduler := scheduler.NewSchdular(workerQueueSize, jobQueueSize)
+	// scheduler := scheduler.NewSchedulerRaft(workerQueueSize, jobQueueSize)
 
-	println("scheduler running")
+	leader := os.Getenv("LEADER")
+	if leader == "true" {
+		// program fault injection
+		duration := os.Getenv("SCHEDULER_CRASH")
+		fault.InjectCrash(duration)
+		println("fault injector started")
 
-	// program fault injection
-	duration := os.Getenv("SCHEDULER_CRASH")
-	fault.InjectCrash(duration)
-	println("fault injector started")
+	}
 
 	rpc.Register(&scheduler.RpcInterface)
 	rpc.HandleHTTP()

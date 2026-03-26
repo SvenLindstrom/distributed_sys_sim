@@ -31,11 +31,11 @@ func (rs *RaftState) RegisterScheduler(id string, address string) error {
 	if rs.raft.State() != raft.Leader {
 		addrs, _ := rs.raft.LeaderWithID()
 		println("redirecting to Leader")
-		println(addrs)
-		// addrsStr := string(addrs)
-		// return errors.New(string(addrs))
-		return errors.New(" ")
-		// return errors.New("TTTT")
+		addrsStr := string(addrs)
+		if addrsStr == "" {
+			return errors.New(" ")
+		}
+		return errors.New(string(addrs))
 	}
 	f := rs.raft.AddVoter(raft.ServerID(id), raft.ServerAddress(address), 0, 5*time.Second)
 
@@ -63,7 +63,7 @@ func (rs *RaftState) AddTask(task *task.Task) error {
 	var cmdd RaftCMD
 	json.Unmarshal(data, &cmdd)
 
-	rs.raft.Apply(data, 5*time.Second)
+	rs.raft.Apply(data, 5*time.Second).Error()
 	return nil
 }
 
@@ -83,7 +83,7 @@ func (rs *RaftState) AssignedTask(task *task.Task, workerId string) error {
 		panic(err)
 	}
 
-	rs.raft.Apply(data, 5*time.Second)
+	rs.raft.Apply(data, 5*time.Second).Error()
 	return nil
 }
 
@@ -96,7 +96,7 @@ func (rs *RaftState) CompleteTask(taskId string, workerId string) error {
 		panic(err)
 	}
 
-	rs.raft.Apply(data, 5*time.Second)
+	rs.raft.Apply(data, 5*time.Second).Error()
 	return nil
 }
 
@@ -104,16 +104,18 @@ func (rs *SchedulerState) Apply(log *raft.Log) interface{} {
 	var cmd RaftCMD
 	json.Unmarshal(log.Data, &cmd)
 
+	var err error
+
 	switch cmd.Op {
 	case "ADD":
-		rs.AddTask(cmd.Task)
+		err = rs.AddTask(cmd.Task)
 	case "ASSIGN":
-		rs.AssignedTask(cmd.Task, cmd.WorkerId)
+		err = rs.AssignedTask(cmd.Task, cmd.WorkerId)
 	case "COMP":
-		rs.CompleteTask(cmd.TaskId, cmd.WorkerId)
+		err = rs.CompleteTask(cmd.TaskId, cmd.WorkerId)
 	}
 
-	return nil
+	return err
 }
 
 type StateSnapshot struct {
