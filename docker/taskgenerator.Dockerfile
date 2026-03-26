@@ -9,9 +9,9 @@ COPY ./internal/network ./internal/network
 COPY ./internal/task ./internal/task
 COPY ./internal/generator ./internal/generator
 
-COPY ./cmd/jobgenerator ./cmd/jobgenerator
+COPY ./cmd/taskgenerator ./cmd/taskgenerator
 
-RUN go build -o generator ./cmd/jobgenerator
+RUN go build -o generator ./cmd/taskgenerator
 
 FROM debian:bookworm-slim
 

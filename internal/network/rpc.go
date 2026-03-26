@@ -10,8 +10,12 @@ type RPCDialer interface {
 	Dial(address string) (RPCClient, error)
 }
 
-type RealRPCDialer struct{}
+type realRPCDialer struct{}
 
-func (d *RealRPCDialer) Dial(address string) (RPCClient, error) {
+func RealRPCDialer() *realRPCDialer {
+	return &realRPCDialer{}
+}
+
+func (d *realRPCDialer) Dial(address string) (RPCClient, error) {
 	return rpc.DialHTTP("tcp", address)
 }

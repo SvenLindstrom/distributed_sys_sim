@@ -20,8 +20,8 @@ type WorkerManagerImple struct {
 func NewWorkerManager(queueSize int) WorkerManager {
 	workers := make(chan *Worker, queueSize)
 	wmap := make(map[string]*Worker)
-	dialer := network.RealRPCDialer{}
-	return &WorkerManagerImple{wmap, workers, &dialer}
+	dialer := network.RealRPCDialer()
+	return &WorkerManagerImple{wmap, workers, dialer}
 }
 
 func (w *WorkerManagerImple) NewWorker(address string, id string) bool {

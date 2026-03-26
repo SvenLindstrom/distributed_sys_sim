@@ -34,9 +34,9 @@ func main() {
 
 	println("logger ready")
 
-	scheduler := scheduler.NewSchdular(workerQueueSize, jobQueueSize)
+	// scheduler := scheduler.NewSchdular(workerQueueSize, jobQueueSize)
+	scheduler := scheduler.NewSchedulerRaft(workerQueueSize, jobQueueSize)
 
-	go scheduler.Run()
 	println("scheduler running")
 
 	// program fault injection
