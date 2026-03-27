@@ -26,8 +26,7 @@ func NewRaftState(raft *raft.Raft, ss *SchedulerState) RaftState {
 	return RaftState{raft, ss}
 }
 
-func (rs *RaftState) RegisterScheduler(id string, address string) error {
-	println("adding new Follower")
+func (rs *RaftState) isLeader() error {
 	if rs.raft.State() != raft.Leader {
 		addrs, _ := rs.raft.LeaderWithID()
 		println("redirecting to Leader")
@@ -37,6 +36,15 @@ func (rs *RaftState) RegisterScheduler(id string, address string) error {
 		}
 		return errors.New(string(addrs))
 	}
+	return nil
+}
+
+func (rs *RaftState) RegisterScheduler(id string, address string) error {
+	err := rs.isLeader()
+	if err != nil {
+		return err
+	}
+
 	f := rs.raft.AddVoter(raft.ServerID(id), raft.ServerAddress(address), 0, 5*time.Second)
 
 	if f.Error() != nil {
@@ -53,7 +61,6 @@ func (rs *RaftState) AddTask(task *task.Task) error {
 		return errors.New(string(addrs))
 	}
 
-	println("task recived")
 	cmd := RaftCMD{Op: "ADD", Task: task}
 	data, err := json.Marshal(cmd)
 
@@ -75,7 +82,6 @@ func (rs *RaftState) NextTask() (*task.Task, bool) {
 }
 
 func (rs *RaftState) AssignedTask(task *task.Task, workerId string) error {
-	println("task given")
 	cmd := RaftCMD{Op: "ASSIGN", Task: task, WorkerId: workerId}
 	data, err := json.Marshal(cmd)
 
@@ -88,7 +94,6 @@ func (rs *RaftState) AssignedTask(task *task.Task, workerId string) error {
 }
 
 func (rs *RaftState) CompleteTask(taskId string, workerId string) error {
-	println("task done")
 	cmd := RaftCMD{Op: "COMP", WorkerId: workerId, TaskId: taskId}
 	data, err := json.Marshal(cmd)
 
