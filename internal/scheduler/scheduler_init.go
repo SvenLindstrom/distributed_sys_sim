@@ -1,0 +1,81 @@
+package scheduler
+
+import (
+	"dssim/internal/scheduler/state"
+	"dssim/internal/scheduler/worker"
+	"log"
+	"os"
+)
+
+func InitScheduler(workerQueueSize int, taskQueueSize int) {
+	permutation := os.Getenv("SETUP")
+
+	switch permutation {
+	case "BASE":
+		leader := os.Getenv("LEADER")
+		if leader == "" {
+			os.Exit(0)
+		}
+		NewSchedular(workerQueueSize, taskQueueSize)
+	case "ELECTION-REPLICATION":
+		NewSchedulerRaft(workerQueueSize, taskQueueSize)
+	}
+}
+
+func NewSchedular(workerQueueSize int, taskQueueSize int) Scheduler {
+	workerManager := worker.NewWorkerManager(workerQueueSize)
+	state := state.NewSchedulerState(taskQueueSize)
+
+	rpc := NewRPC(workerManager, state)
+	s := NewScheduler(workerManager, state)
+
+	go s.Run()
+	rpc.Start()
+
+	return s
+}
+
+func leaderChange(leader <-chan bool, s *Scheduler, rpc *RpcInterface) {
+	for {
+		amLeader := <-leader
+
+		if amLeader {
+			go s.Run()
+			rpc.Start()
+		} else {
+			s.RunLoop = false
+		}
+	}
+}
+
+func NewSchedulerRaft(workerQueueSize int, taskQueueSize int) Scheduler {
+	println("In Raft")
+	workerManager := worker.NewWorkerManager(workerQueueSize)
+
+	fsm := state.NewSchedulerState(taskQueueSize)
+
+	r, err := NewRaft(fsm)
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	leader := os.Getenv("LEADER")
+
+	if leader == "true" {
+		r.BootStrap()
+	} else {
+		r.RegisterWithLeader()
+	}
+
+	println("returning manager")
+
+	state := state.NewRaftState(r.raft, fsm)
+	s := NewScheduler(workerManager, &state)
+
+	RpcInterface := NewRPC(workerManager, &state)
+
+	go leaderChange(r.raft.LeaderCh(), &s, &RpcInterface)
+
+	return s
+}
