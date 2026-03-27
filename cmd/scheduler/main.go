@@ -5,8 +5,6 @@ import (
 	"dssim/internal/misc"
 	"dssim/internal/scheduler"
 	"log"
-	"net/http"
-	"net/rpc"
 	"os"
 	"strconv"
 )
@@ -20,7 +18,6 @@ func main() {
 	}
 	defer f.Close()
 
-	port := ":" + os.Getenv("SCHEDULER_PORT")
 	jobQueueSize, err := strconv.Atoi(os.Getenv("JOB_Q_SIZE"))
 	if err != nil {
 		log.Println("job q size not set")
@@ -34,8 +31,10 @@ func main() {
 
 	println("logger ready")
 
-	scheduler := scheduler.NewSchdular(workerQueueSize, jobQueueSize)
-	// scheduler := scheduler.NewSchedulerRaft(workerQueueSize, jobQueueSize)
+	// scheduler.NewSchedular(workerQueueSize, jobQueueSize)
+	// scheduler.NewSchedulerRaft(workerQueueSize, jobQueueSize)
+
+	scheduler.InitScheduler(workerQueueSize, jobQueueSize)
 
 	leader := os.Getenv("LEADER")
 	if leader == "true" {
@@ -46,12 +45,5 @@ func main() {
 
 	}
 
-	rpc.Register(&scheduler.RpcInterface)
-	rpc.HandleHTTP()
-
-	println("rcp server ready")
-	err = http.ListenAndServe(port, nil)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
+	select {}
 }
