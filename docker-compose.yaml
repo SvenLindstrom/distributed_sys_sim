@@ -9,8 +9,21 @@ services:
     ports:
       - 8080:8080
     env_file: "./config"
+    environment:
+      LEADER: "true"
     depends_on:
       - generator
+  follower:
+    build:
+      context: .
+      dockerfile: ./docker/scheduler.Dockerfile
+    volumes:
+      - ./logs/:/app/logs/
+    env_file: "./config"
+    environment:
+      LEADER: ""
+    depends_on:
+      - scheduler
   worker:
     build:
       context: .
@@ -23,7 +36,7 @@ services:
   generator:
     build:
       context: .
-      dockerfile: ./docker/jobgenerator.Dockerfile
+      dockerfile: ./docker/taskgenerator.Dockerfile
     env_file: "./config"
     volumes:
       - ./logs/:/app/logs
