@@ -1,7 +1,7 @@
 package worker
 
 import (
-	"dssim/internal/job"
+	"dssim/internal/task"
 	"testing"
 )
 
@@ -66,13 +66,13 @@ func TestRegisterWorker(t *testing.T) {
 	}
 }
 
-func TestCompleteJob(t *testing.T) {
+func TestCompleteTask(t *testing.T) {
 	w := NewWorker("worker:9000", "scheduler:9000")
 	w.ID = "mock-worker-id"
 	mockClient := &MockRPCClient{}
 	w.schedulerClient = mockClient
 
-	err := w.completeJob("mock-job-id")
+	err := w.completeTask("mock-task-id")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,30 +81,30 @@ func TestCompleteJob(t *testing.T) {
 		t.Errorf("Expected RPC Call to '%s'", mockClient.serviceName)
 	}
 
-	args, ok := mockClient.args.(*job.JobResult)
+	args, ok := mockClient.args.(*task.TaskResult)
 
 	if !ok {
-		t.Fatalf("Expected arg type *JobResult, actual %T", mockClient.args)
+		t.Fatalf("Expected arg type *TaskResult, actual %T", mockClient.args)
 	}
 
-	if args.JobID != "mock-job-id" ||
+	if args.TaskID != "mock-task-id" ||
 		args.WorkerID != "mock-worker-id" ||
 		args.Status != "completed" {
-		t.Errorf("Unexpected values in JobResult: %+v", args)
+		t.Errorf("Unexpected values in TaskResult: %+v", args)
 	}
 
 }
 
-func TestAssignJob(t *testing.T) {
+func TestAssignTask(t *testing.T) {
 	w := NewWorker("worker:9000", "scheduler:9000")
 
-	job := job.Job{
-		ID:       "mock-job-id",
+	task := task.Task{
+		ID:       "mock-task-id",
 		Duration: 0,
 	}
 	reply := false
 
-	err := w.AssignJob(&job, &reply)
+	err := w.AssignTask(&task, &reply)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,31 +113,31 @@ func TestAssignJob(t *testing.T) {
 		t.Errorf("Expected reply to be true, actual false")
 	}
 
-	if w.currentJob != "mock-job-id" || w.state != BUSY {
+	if w.currentTask != "mock-task-id" || w.state != BUSY {
 		t.Errorf(
-			"Expected currentJob '%s' and state BUSY, actual currentJob '%s' and state '%v'",
-			job.ID,
-			w.currentJob,
+			"Expected currentTask '%s' and state BUSY, actual currentTask '%s' and state '%v'",
+			task.ID,
+			w.currentTask,
 			w.state,
 		)
 	}
 }
 
-func TestExecuteJob(t *testing.T) {
+func TestExecuteTask(t *testing.T) {
 	w := NewWorker("worker:9000", "scheduler:9000")
 	w.ID = "mock-worker-id"
 	mockClient := &MockRPCClient{}
 	w.schedulerClient = mockClient
 
-	job := job.Job{
-		ID:       "mock-job-id",
+	task := task.Task{
+		ID:       "mock-task-id",
 		Duration: 0,
 	}
 
-	w.executeJob(job)
+	w.executeTask(task)
 
-	if w.currentJob != "" {
-		t.Errorf("Expected currentJob '', actual currentJob '%s'", w.currentJob)
+	if w.currentTask != "" {
+		t.Errorf("Expected currentTask '', actual currentTask '%s'", w.currentTask)
 	}
 
 	if w.state != IDLE {
