@@ -64,8 +64,9 @@ func (g *Generator) ReadyForWork(address *string, ok *bool) error {
 
 	if g.client == nil {
 		g.client = &client
-		go g.Run(g.client)
+		go g.Run()
 	} else {
+		println("new client")
 		g.client = &client
 	}
 
@@ -75,14 +76,13 @@ func (g *Generator) ReadyForWork(address *string, ok *bool) error {
 	return nil
 }
 
-func (g *Generator) Run(client *network.RPCClient) {
+func (g *Generator) Run() {
 	for {
-		c := *client
+		c := *g.client
 
 		task, err := task.CreateTask(g.duration)
 		if err != nil {
-
-			println(err.Error())
+			continue
 		}
 
 		var ok bool

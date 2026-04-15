@@ -1,4 +1,4 @@
-package manager
+package scheduler
 
 import (
 	"dssim/internal/misc"
@@ -8,28 +8,43 @@ import (
 	"dssim/internal/task"
 	"errors"
 	"log/slog"
+	"net/http"
+	"net/rpc"
+	"os"
 
 	"github.com/hashicorp/raft"
 )
 
-type Scheduler struct {
+type RpcInterface struct {
 	workers worker.WorkerManager
 	state   state.State
 	client  network.RPCClient
 }
 
-func NewScheduler(worker worker.WorkerManager, state state.State) Scheduler {
-	client, err := network.RealRPCDialer().Dial("Generator:8081")
+func NewRPC(worker worker.WorkerManager, state state.State) RpcInterface {
 
+	client, err := network.RealRPCDialer().Dial("Generator:8081")
 	if err != nil {
 		println("failed to dial generator")
 		println(err.Error())
 	}
+	s := RpcInterface{worker, state, client}
 
-	return Scheduler{worker, state, client}
+	return s
 }
 
-func (s *Scheduler) NotifiyGenerator(addr string) bool {
+func (s *RpcInterface) Start() {
+	port := ":" + os.Getenv("SCHEDULER_PORT")
+	rpc.RegisterName("Scheduler", s)
+	rpc.HandleHTTP()
+	go http.ListenAndServe(port, nil)
+
+	println("rcp server ready")
+	s.NotifiyGenerator()
+}
+
+func (s *RpcInterface) NotifiyGenerator() bool {
+	addr := os.Getenv("HOSTNAME")
 	var ok bool
 	err := s.client.Call("Generator.ReadyForWork", &addr, &ok)
 
@@ -39,7 +54,8 @@ func (s *Scheduler) NotifiyGenerator(addr string) bool {
 	return ok
 }
 
-func (s *Scheduler) CreateTask(task *task.Task, reply *bool) error {
+func (s *RpcInterface) CreateTask(task *task.Task, reply *bool) error {
+	println("Task recived")
 	err := s.state.AddTask(task)
 	if err != nil {
 		*reply = false
@@ -56,8 +72,9 @@ func (s *Scheduler) CreateTask(task *task.Task, reply *bool) error {
 	return nil
 }
 
-func (s *Scheduler) CompleteTask(args *task.TaskResult, reply *bool) error {
+func (s *RpcInterface) CompleteTask(args *task.TaskResult, reply *bool) error {
 
+	println("Task completed")
 	s.state.CompleteTask(args.TaskID, args.WorkerID)
 	s.workers.TaskCompleted(args.WorkerID)
 
@@ -79,7 +96,7 @@ func (s *Scheduler) CompleteTask(args *task.TaskResult, reply *bool) error {
 	return nil
 }
 
-func (s *Scheduler) RegisterWorker(args *string, reply *string) error {
+func (s *RpcInterface) RegisterWorker(args *string, reply *string) error {
 	println("new worker")
 	id, err := misc.GenID()
 	if err != nil {
@@ -102,16 +119,8 @@ func (s *Scheduler) RegisterWorker(args *string, reply *string) error {
 	return nil
 }
 
-func (s *Scheduler) RegisterScheduler(reg *raft.Server, res *bool) error {
+func (s *RpcInterface) RegisterScheduler(reg *raft.Server, res *bool) error {
 	err := s.state.RegisterScheduler(string(reg.ID), string(reg.Address))
 
-	// res.Err = err
-	// if err != nil {
-	// 	*res = network.RPCRes{Val: "test", Err: err.Error()}
-	// } else {
-	// 	*res = network.RPCRes{Val: "no Teest", Err: ""}
-	// }
-	// res.Val = "test"
-	// println(err.Error())
 	return err
 }
