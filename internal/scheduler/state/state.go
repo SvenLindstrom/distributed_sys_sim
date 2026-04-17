@@ -2,6 +2,7 @@ package state
 
 import (
 	"dssim/internal/task"
+	"errors"
 )
 
 type State interface {
@@ -10,6 +11,7 @@ type State interface {
 	AssignedTask(task *task.Task, workerId string) error
 	CompleteTask(taskId string, workerId string) error
 	RegisterScheduler(id string, address string) error
+	IsLeader() error
 }
 
 type SchedulerState struct {
@@ -42,13 +44,19 @@ func (ss *SchedulerState) AssignedTask(task *task.Task, workerId string) error {
 }
 
 func (ss *SchedulerState) CompleteTask(taskId string, workerId string) error {
-	task := ss.running[workerId]
-	if task.ID == taskId {
-		delete(ss.running, workerId)
+	if task := ss.running[workerId]; task != nil {
+		if task.ID == taskId {
+			delete(ss.running, workerId)
+		}
+		return nil
 	}
-	return nil
+	return errors.New("unknown worker")
 }
 
 func (ss *SchedulerState) RegisterScheduler(id string, address string) error {
+	return nil
+}
+
+func (ss *SchedulerState) IsLeader() error {
 	return nil
 }

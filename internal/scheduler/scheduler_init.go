@@ -19,6 +19,8 @@ func InitScheduler(workerQueueSize int, taskQueueSize int) {
 		NewSchedular(workerQueueSize, taskQueueSize)
 	case "ELECTION-REPLICATION":
 		NewSchedulerRaft(workerQueueSize, taskQueueSize)
+	case "FAILOVER":
+		newSchedulerFailover(workerQueueSize, taskQueueSize)
 	}
 }
 
@@ -31,6 +33,7 @@ func NewSchedular(workerQueueSize int, taskQueueSize int) Scheduler {
 
 	go s.Run()
 	rpc.Start()
+	rpc.NotifiyGenerator()
 
 	return s
 }
@@ -41,11 +44,34 @@ func leaderChange(leader <-chan bool, s *Scheduler, rpc *RpcInterface) {
 
 		if amLeader {
 			go s.Run()
-			rpc.Start()
+			rpc.NotifiyGenerator()
 		} else {
 			s.RunLoop = false
 		}
 	}
+}
+
+func newSchedulerFailover(workerQueueSize int, taskQueueSize int) Scheduler {
+	println("In Failover")
+	workerManager := worker.NewWorkerManager(workerQueueSize)
+
+	fsm := state.NewSchedulerState(taskQueueSize)
+
+	r, err := NewRaft(fsm)
+
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
+	s := NewScheduler(workerManager, fsm)
+
+	RpcInterface := NewRPC(workerManager, fsm)
+	go leaderChange(r.raft.LeaderCh(), &s, &RpcInterface)
+
+	println("rcp server ready")
+	RpcInterface.Start()
+
+	return s
 }
 
 func NewSchedulerRaft(workerQueueSize int, taskQueueSize int) Scheduler {
@@ -76,6 +102,9 @@ func NewSchedulerRaft(workerQueueSize int, taskQueueSize int) Scheduler {
 	RpcInterface := NewRPC(workerManager, &state)
 
 	go leaderChange(r.raft.LeaderCh(), &s, &RpcInterface)
+
+	println("rcp server ready")
+	RpcInterface.Start()
 
 	return s
 }

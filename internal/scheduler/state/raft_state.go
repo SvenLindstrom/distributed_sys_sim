@@ -26,7 +26,7 @@ func NewRaftState(raft *raft.Raft, ss *SchedulerState) RaftState {
 	return RaftState{raft, ss}
 }
 
-func (rs *RaftState) isLeader() error {
+func (rs *RaftState) IsLeader() error {
 	if rs.raft.State() != raft.Leader {
 		addrs, _ := rs.raft.LeaderWithID()
 		println("redirecting to Leader")
@@ -40,7 +40,7 @@ func (rs *RaftState) isLeader() error {
 }
 
 func (rs *RaftState) RegisterScheduler(id string, address string) error {
-	err := rs.isLeader()
+	err := rs.IsLeader()
 	if err != nil {
 		return err
 	}

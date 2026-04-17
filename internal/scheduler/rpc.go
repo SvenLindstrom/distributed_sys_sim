@@ -39,8 +39,6 @@ func (s *RpcInterface) Start() {
 	rpc.HandleHTTP()
 	go http.ListenAndServe(port, nil)
 
-	println("rcp server ready")
-	s.NotifiyGenerator()
 }
 
 func (s *RpcInterface) NotifiyGenerator() bool {
@@ -75,9 +73,13 @@ func (s *RpcInterface) CreateTask(task *task.Task, reply *bool) error {
 func (s *RpcInterface) CompleteTask(args *task.TaskResult, reply *bool) error {
 
 	println("Task completed")
-	s.state.CompleteTask(args.TaskID, args.WorkerID)
-	s.workers.TaskCompleted(args.WorkerID)
+	err := s.state.CompleteTask(args.TaskID, args.WorkerID)
+	if err != nil {
+		*reply = false
+		return err
+	}
 
+	s.workers.TaskCompleted(args.WorkerID)
 	*reply = true
 	var ok bool
 	s.client.Call("Generator.TaskCompleted", &args.TaskID, &ok)
@@ -97,6 +99,11 @@ func (s *RpcInterface) CompleteTask(args *task.TaskResult, reply *bool) error {
 }
 
 func (s *RpcInterface) RegisterWorker(args *string, reply *string) error {
+	if err := s.state.IsLeader(); err != nil {
+		*reply = err.Error()
+		return err
+	}
+
 	println("new worker")
 	id, err := misc.GenID()
 	if err != nil {
