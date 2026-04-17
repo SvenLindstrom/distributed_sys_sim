@@ -77,6 +77,10 @@ func (s *RpcInterface) CreateTask(task *task.Task, reply *bool) error {
 
 func (s *RpcInterface) CompleteTask(args *task.TaskResult, reply *bool) error {
 
+	if err := s.state.IsLeader(); err != nil {
+		return err
+	}
+
 	println("Task completed")
 	err := s.state.CompleteTask(args.TaskID, args.WorkerID)
 	if err != nil {
@@ -136,4 +140,9 @@ func (s *RpcInterface) RegisterScheduler(reg *raft.Server, res *bool) error {
 	err := s.state.RegisterScheduler(string(reg.ID), string(reg.Address))
 
 	return err
+}
+
+func (s *RpcInterface) Ping(workerID *string, reply *bool) error {
+	*reply = true
+	return nil
 }

@@ -8,6 +8,7 @@ stop:
 	sudo docker compose down
 
 restart: stop start
+dev: build start
 
 build:
 	sudo docker compose build
