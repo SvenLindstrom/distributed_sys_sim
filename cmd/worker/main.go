@@ -29,6 +29,9 @@ func main() {
 
 	// create and run Worker
 	w := worker.NewWorker(address, schedulerAddresses)
-	w.Run()
+
+	if err := w.Run(); err != nil {
+		log.Fatal(err)
+	}
 
 }
