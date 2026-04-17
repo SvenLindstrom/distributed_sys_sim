@@ -6,10 +6,18 @@ import (
 	"log/slog"
 	"net/http"
 	"net/rpc"
+	"os"
+	"strings"
 	"time"
 )
 
 type WorkerState int
+
+type RegistrationReply struct {
+	IsLeader bool
+	ID       string
+	addr     string
+}
 
 const (
 	IDLE WorkerState = iota
@@ -43,18 +51,15 @@ func (w *Worker) Run() error {
 
 	rpc.HandleHTTP()
 
-	err = w.getClient()
+	err = w.getClient(w.schedulers[0])
 	if err != nil {
 		return err
 	}
 
 	go http.ListenAndServe(w.address, nil)
 
-	// register Worker
-	err = w.registerWorker()
-	if err != nil {
-		return err
-	}
+	// register Worker and retry
+	w.retryRegistration()
 
 	// start hearbeat
 	go w.startHeartbeat()
@@ -62,8 +67,8 @@ func (w *Worker) Run() error {
 	select {}
 }
 
-func (w *Worker) getClient() error {
-	client, err := network.RealRPCDialer().Dial(w.schedulers[0])
+func (w *Worker) getClient(address string) error {
+	client, err := network.RealRPCDialer().Dial(address)
 
 	if err != nil {
 		return err
@@ -110,16 +115,19 @@ func (w *Worker) executeTask(task task.Task) {
 
 // requests to Scheduler
 
-func (w *Worker) registerWorker() error {
+func (w *Worker) registerWorker() (*RegistrationReply, error) {
 	// call Scheduler to register Worker
-	var workerID string
-	err := w.schedulerClient.Call("Scheduler.RegisterWorker", &w.address, &workerID)
-	if err != nil {
-		return err
+	var rr RegistrationReply
+	err := w.schedulerClient.Call("Scheduler.RegisterWorker", &w.address, &rr)
+
+	if err != nil && !rr.IsLeader {
+		return nil, err
+	} else if err != nil && rr.addr != "" {
+		return &rr, err
 	}
 
 	// save Worker ID
-	w.ID = workerID
+	w.ID = rr.ID
 
 	// log
 	slog.Info(
@@ -130,7 +138,24 @@ func (w *Worker) registerWorker() error {
 		w.address,
 	)
 
-	return nil
+	println("Worker registration successful.")
+
+	return &rr, nil
+}
+
+func (w *Worker) retryRegistration() {
+	for {
+		_, err := w.registerWorker()
+		if err == nil {
+			break
+		}
+
+		slog.Info(
+			"Worker registration failed, will retry",
+			"error", err,
+		)
+		time.Sleep(1 * time.Second)
+	}
 }
 
 func (w *Worker) completeTask(taskID string) error {
@@ -175,7 +200,30 @@ func (w *Worker) startHeartbeat() {
 				"worker", w.ID,
 				"error", err,
 			)
-			// some actions to handle leader crash
+
+			println("Leader heartbeat failed. Finding new leader...")
+			w.findNewLeader()
 		}
+	}
+}
+
+func (w *Worker) findNewLeader() {
+	followerAddr := w.schedulers[1] // either the new leader or actual follower
+
+	err := w.getClient(followerAddr)
+	if err == nil {
+		rr, err := w.registerWorker()
+
+		if err != nil && !rr.IsLeader {
+			// parse new leader address
+			newLeaderAddr := strings.Split(rr.addr, ":")[0] + ":" + os.Getenv("SCHEDULER_PORT")
+			println("Follower contacted instead. Using provided Leader address.")
+
+			// dial and re-register with new leader
+			w.getClient(newLeaderAddr)
+			w.retryRegistration()
+		}
+
+		println("New Leader found. Proceeding as usual.")
 	}
 }
