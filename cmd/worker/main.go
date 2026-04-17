@@ -5,6 +5,7 @@ import (
 	"dssim/internal/worker"
 	"log"
 	"os"
+	"strings"
 )
 
 func main() {
@@ -18,10 +19,16 @@ func main() {
 
 	// get Worker and Scheduler addresses
 	address := os.Getenv("HOSTNAME") + ":" + os.Getenv("WORKER_PORT")
-	schedulerAddress := "scheduler" + ":" + os.Getenv("SCHEDULER_PORT")
+	port := os.Getenv("SCHEDULER_PORT")
+	schedulerNames := strings.Split(os.Getenv("SCHEDULER_NAMES"), ",")
+	schedulerAddresses := make([]string, len(schedulerNames))
+
+	for i, name := range schedulerNames {
+		schedulerAddresses[i] = name + ":" + port
+	}
 
 	// create and run Worker
-	w := worker.NewWorker(address, schedulerAddress)
+	w := worker.NewWorker(address, schedulerAddresses)
 	w.Run()
 
 }
