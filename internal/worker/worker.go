@@ -19,17 +19,17 @@ const (
 type Worker struct {
 	ID              string
 	address         string
-	SchedulerAddr   string
+	schedulers      []string
 	state           WorkerState
 	currentTask     string
 	schedulerClient network.RPCClient
 }
 
-func NewWorker(address, SchedulerAddr string) *Worker {
+func NewWorker(address string, schedulers []string) *Worker {
 	return &Worker{
-		address:       address,
-		SchedulerAddr: SchedulerAddr,
-		state:         IDLE,
+		address:    address,
+		schedulers: schedulers,
+		state:      IDLE,
 	}
 }
 
@@ -58,7 +58,7 @@ func (w *Worker) Run() error {
 }
 
 func (w *Worker) getClient() error {
-	client, err := network.RealRPCDialer().Dial(w.SchedulerAddr)
+	client, err := network.RealRPCDialer().Dial(w.schedulers[0])
 
 	if err != nil {
 		return err
