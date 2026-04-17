@@ -15,6 +15,12 @@ import (
 	"github.com/hashicorp/raft"
 )
 
+type RegistrationReply struct {
+	IsLeader bool
+	ID       string
+	addr     string
+}
+
 type RpcInterface struct {
 	workers worker.WorkerManager
 	state   state.State
@@ -38,7 +44,6 @@ func (s *RpcInterface) Start() {
 	rpc.RegisterName("Scheduler", s)
 	rpc.HandleHTTP()
 	go http.ListenAndServe(port, nil)
-
 }
 
 func (s *RpcInterface) NotifiyGenerator() bool {
@@ -98,10 +103,11 @@ func (s *RpcInterface) CompleteTask(args *task.TaskResult, reply *bool) error {
 	return nil
 }
 
-func (s *RpcInterface) RegisterWorker(args *string, reply *string) error {
+func (s *RpcInterface) RegisterWorker(args *string, reply *RegistrationReply) error {
+
 	if err := s.state.IsLeader(); err != nil {
-		*reply = err.Error()
-		return err
+		*reply = RegistrationReply{IsLeader: false, addr: err.Error(), ID: ""}
+		return nil
 	}
 
 	println("new worker")
@@ -122,7 +128,7 @@ func (s *RpcInterface) RegisterWorker(args *string, reply *string) error {
 		"workerIP",
 		*args,
 	)
-	*reply = id
+	*reply = RegistrationReply{IsLeader: true, addr: "", ID: id}
 	return nil
 }
 
