@@ -34,7 +34,7 @@ func (rs *RaftState) IsLeader() error {
 		if addrsStr == "" {
 			return errors.New(" ")
 		}
-		return errors.New(string(addrs))
+		return errors.New(addrsStr)
 	}
 	return nil
 }

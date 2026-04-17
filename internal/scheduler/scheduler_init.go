@@ -43,6 +43,7 @@ func leaderChange(leader <-chan bool, s *Scheduler, rpc *RpcInterface) {
 		amLeader := <-leader
 
 		if amLeader {
+			s.RunLoop = true
 			go s.Run()
 			rpc.NotifiyGenerator()
 		} else {
