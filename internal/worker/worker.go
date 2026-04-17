@@ -16,6 +16,8 @@ const (
 	BUSY
 )
 
+const heartbeatInterval = 2 * time.Second
+
 type Worker struct {
 	ID              string
 	address         string
@@ -53,6 +55,9 @@ func (w *Worker) Run() error {
 	if err != nil {
 		return err
 	}
+
+	// start hearbeat
+	go w.startHeartbeat()
 
 	select {}
 }
@@ -153,4 +158,24 @@ func (w *Worker) completeTask(taskID string) error {
 	)
 
 	return nil
+}
+
+func (w *Worker) startHeartbeat() {
+	ticker := time.NewTicker(heartbeatInterval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		var reply bool
+		err := w.schedulerClient.Call("Scheduler.Ping", w.ID, &reply)
+
+		if err != nil {
+			// log detected leader crash
+			slog.Warn(
+				"Heartbeat failed",
+				"worker", w.ID,
+				"error", err,
+			)
+			// some actions to handle leader crash
+		}
+	}
 }

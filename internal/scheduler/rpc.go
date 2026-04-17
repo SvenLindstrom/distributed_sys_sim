@@ -137,3 +137,8 @@ func (s *RpcInterface) RegisterScheduler(reg *raft.Server, res *bool) error {
 
 	return err
 }
+
+func (s *RpcInterface) Ping(workerID *string, reply *bool) error {
+	*reply = true
+	return nil
+}
