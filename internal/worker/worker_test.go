@@ -2,6 +2,7 @@ package worker
 
 import (
 	"dssim/internal/task"
+	"reflect"
 	"testing"
 )
 
@@ -12,6 +13,8 @@ type MockRPCClient struct {
 	reply       any
 }
 
+var schedulers []string = []string{"scheduler:8080", "follower:8080"}
+
 func (m *MockRPCClient) Call(serviceName string, args, reply any) error {
 	m.called = true
 	m.serviceName = serviceName
@@ -19,24 +22,24 @@ func (m *MockRPCClient) Call(serviceName string, args, reply any) error {
 	m.reply = reply
 
 	switch r := reply.(type) {
-	case *string:
-		*r = "mock-worker-id"
 	case *bool:
 		*r = true
+	case *RegistrationReply:
+		*r = RegistrationReply{IsLeader: true, ID: "mock-worker-id", addr: ""}
 	}
 
 	return nil
 }
 
 func TestNewWorker(t *testing.T) {
-	w := NewWorker("worker:9000", "scheduler:9000")
+	w := NewWorker("worker:9000", schedulers)
 
 	if w.address != "worker:9000" {
 		t.Errorf("Expected worker address 'worker:9000', actual '%s'", w.address)
 	}
 
-	if w.SchedulerAddr != "scheduler:9000" {
-		t.Errorf("Expected scheduler address 'scheduler:9000', actual '%s'", w.SchedulerAddr)
+	if !reflect.DeepEqual(w.schedulers, schedulers) {
+		t.Errorf("Expected scheduler addresses '[scheduler:8080 follower:8080]', actual '%v'", w.schedulers)
 	}
 
 	if w.state != IDLE {
@@ -48,11 +51,11 @@ func TestNewWorker(t *testing.T) {
 }
 
 func TestRegisterWorker(t *testing.T) {
-	w := NewWorker("worker:9000", "scheduler:9000")
+	w := NewWorker("worker:9000", schedulers)
 	mockClient := &MockRPCClient{}
 	w.schedulerClient = mockClient
 
-	err := w.registerWorker()
+	_, err := w.registerWorker()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +70,7 @@ func TestRegisterWorker(t *testing.T) {
 }
 
 func TestCompleteTask(t *testing.T) {
-	w := NewWorker("worker:9000", "scheduler:9000")
+	w := NewWorker("worker:9000", schedulers)
 	w.ID = "mock-worker-id"
 	mockClient := &MockRPCClient{}
 	w.schedulerClient = mockClient
@@ -96,7 +99,7 @@ func TestCompleteTask(t *testing.T) {
 }
 
 func TestAssignTask(t *testing.T) {
-	w := NewWorker("worker:9000", "scheduler:9000")
+	w := NewWorker("worker:9000", schedulers)
 
 	task := task.Task{
 		ID:       "mock-task-id",
@@ -124,7 +127,7 @@ func TestAssignTask(t *testing.T) {
 }
 
 func TestExecuteTask(t *testing.T) {
-	w := NewWorker("worker:9000", "scheduler:9000")
+	w := NewWorker("worker:9000", schedulers)
 	w.ID = "mock-worker-id"
 	mockClient := &MockRPCClient{}
 	w.schedulerClient = mockClient
