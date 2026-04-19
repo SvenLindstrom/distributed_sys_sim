@@ -76,7 +76,9 @@ func (s *RpcInterface) CreateTask(task *task.Task, reply *bool) error {
 }
 
 func (s *RpcInterface) CompleteTask(args *task.TaskResult, reply *bool) error {
-
+	if err := s.state.IsLeader(); err != nil {
+		return err
+	}
 	println("Task completed")
 	err := s.state.CompleteTask(args.TaskID, args.WorkerID)
 	if err != nil {

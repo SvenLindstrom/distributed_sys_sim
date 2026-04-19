@@ -64,9 +64,18 @@ func newSchedulerFailover(workerQueueSize int, taskQueueSize int) Scheduler {
 		log.Fatal(err.Error())
 	}
 
-	s := NewScheduler(workerManager, fsm)
+	leader := os.Getenv("LEADER")
 
-	RpcInterface := NewRPC(workerManager, fsm)
+	if leader == "true" {
+		r.BootStrap()
+	} else {
+		r.RegisterWithLeader()
+	}
+
+	state := state.NewFailOverState(r.raft, fsm)
+	s := NewScheduler(workerManager, &state)
+
+	RpcInterface := NewRPC(workerManager, &state)
 	go leaderChange(r.raft.LeaderCh(), &s, &RpcInterface)
 
 	println("rcp server ready")
