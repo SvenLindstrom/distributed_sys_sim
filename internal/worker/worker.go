@@ -3,6 +3,7 @@ package worker
 import (
 	"dssim/internal/network"
 	"dssim/internal/task"
+	"errors"
 	"log/slog"
 	"net/http"
 	"net/rpc"
@@ -29,6 +30,7 @@ const heartbeatInterval = 2 * time.Second
 type Worker struct {
 	ID              string
 	address         string
+	leaderAddr      string
 	schedulers      []string
 	state           WorkerState
 	currentTask     string
@@ -59,7 +61,10 @@ func (w *Worker) Run() error {
 	go http.ListenAndServe(w.address, nil)
 
 	// register Worker and retry
-	w.retryRegistration()
+	err = w.retryRegistration()
+	if err != nil {
+		return err
+	}
 
 	// start hearbeat
 	go w.startHeartbeat()
@@ -120,14 +125,22 @@ func (w *Worker) registerWorker() (*RegistrationReply, error) {
 	var rr RegistrationReply
 	err := w.schedulerClient.Call("Scheduler.RegisterWorker", &w.address, &rr)
 
-	if err != nil && !rr.IsLeader {
+	if err != nil {
 		return nil, err
-	} else if err != nil && rr.addr != "" {
-		return &rr, err
 	}
 
-	// save Worker ID
+	if !rr.IsLeader && rr.addr == "" {
+		// retry reg
+		return nil, errors.New("Leader not yet elected")
+	} else if rr.addr != "" {
+		// redirected
+		return &rr, errors.New("Contacted follower; redirected")
+	}
+
+	// save Worker ID and Leader address
 	w.ID = rr.ID
+	newLeaderAddr := strings.Split(rr.addr, ":")[0] + ":" + os.Getenv("SCHEDULER_PORT")
+	w.leaderAddr = newLeaderAddr
 
 	// log
 	slog.Info(
@@ -138,16 +151,29 @@ func (w *Worker) registerWorker() (*RegistrationReply, error) {
 		w.address,
 	)
 
-	println("Worker registration successful.")
+	println("Worker registration successful")
 
 	return &rr, nil
 }
 
-func (w *Worker) retryRegistration() {
+func (w *Worker) retryRegistration() error {
 	for {
-		_, err := w.registerWorker()
+		rr, err := w.registerWorker()
 		if err == nil {
 			break
+		}
+
+		switch err.Error() {
+		case "Leader not yet elected":
+			// nothing happens
+		case "Contacted follower; redirected":
+			println("Follower contacted instead. Using provided Leader address.")
+			newLeaderAddr := strings.Split(rr.addr, ":")[0] + ":" + os.Getenv("SCHEDULER_PORT")
+			if newLeaderAddr != w.leaderAddr {
+				w.getClient(newLeaderAddr)
+			}
+		default:
+			return err
 		}
 
 		slog.Info(
@@ -156,6 +182,8 @@ func (w *Worker) retryRegistration() {
 		)
 		time.Sleep(1 * time.Second)
 	}
+
+	return nil
 }
 
 func (w *Worker) completeTask(taskID string) error {
@@ -207,23 +235,18 @@ func (w *Worker) startHeartbeat() {
 	}
 }
 
-func (w *Worker) findNewLeader() {
+func (w *Worker) findNewLeader() error {
 	followerAddr := w.schedulers[1] // either the new leader or actual follower
 
 	err := w.getClient(followerAddr)
-	if err == nil {
-		rr, err := w.registerWorker()
-
-		if err != nil && !rr.IsLeader {
-			// parse new leader address
-			newLeaderAddr := strings.Split(rr.addr, ":")[0] + ":" + os.Getenv("SCHEDULER_PORT")
-			println("Follower contacted instead. Using provided Leader address.")
-
-			// dial and re-register with new leader
-			w.getClient(newLeaderAddr)
-			w.retryRegistration()
-		}
-
-		println("New Leader found. Proceeding as usual.")
+	if err != nil {
+		return err
 	}
+
+	err = w.retryRegistration()
+	if err == nil {
+		println("New Leader found")
+	}
+
+	return err
 }
