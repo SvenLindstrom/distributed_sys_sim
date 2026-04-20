@@ -7,6 +7,7 @@ import (
 	"dssim/internal/scheduler/worker"
 	"dssim/internal/task"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"net/rpc"
@@ -18,7 +19,7 @@ import (
 type RegistrationReply struct {
 	IsLeader bool
 	ID       string
-	addr     string
+	Addr     string
 }
 
 type RpcInterface struct {
@@ -76,15 +77,15 @@ func (s *RpcInterface) CreateTask(task *task.Task, reply *bool) error {
 }
 
 func (s *RpcInterface) CompleteTask(args *task.TaskResult, reply *bool) error {
-	if err := s.state.IsLeader(); err != nil {
-		return err
+	if isLeader, _ := s.state.IsLeader(); !isLeader {
+		return errors.New("Not Leader")
 	}
 
 	println("Task completed")
 	err := s.state.CompleteTask(args.TaskID, args.WorkerID)
 	if err != nil {
 		*reply = false
-		return err
+		return nil
 	}
 
 	s.workers.TaskCompleted(args.WorkerID)
@@ -107,9 +108,10 @@ func (s *RpcInterface) CompleteTask(args *task.TaskResult, reply *bool) error {
 }
 
 func (s *RpcInterface) RegisterWorker(args *string, reply *RegistrationReply) error {
-
-	if err := s.state.IsLeader(); err != nil {
-		*reply = RegistrationReply{IsLeader: false, addr: err.Error(), ID: ""}
+	isLeader, addr := s.state.IsLeader()
+	if !isLeader {
+		*reply = RegistrationReply{IsLeader: false, Addr: addr, ID: ""}
+		fmt.Printf("%+v\n", reply)
 		return nil
 	}
 
@@ -131,7 +133,7 @@ func (s *RpcInterface) RegisterWorker(args *string, reply *RegistrationReply) er
 		"workerIP",
 		*args,
 	)
-	*reply = RegistrationReply{IsLeader: true, addr: "", ID: id}
+	*reply = RegistrationReply{IsLeader: true, Addr: addr, ID: id}
 	return nil
 }
 

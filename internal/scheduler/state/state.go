@@ -11,7 +11,7 @@ type State interface {
 	AssignedTask(task *task.Task, workerId string) error
 	CompleteTask(taskId string, workerId string) error
 	RegisterScheduler(id string, address string) error
-	IsLeader() error
+	IsLeader() (bool, string)
 }
 
 type SchedulerState struct {
@@ -57,6 +57,6 @@ func (ss *SchedulerState) RegisterScheduler(id string, address string) error {
 	return nil
 }
 
-func (ss *SchedulerState) IsLeader() error {
-	return nil
+func (ss *SchedulerState) IsLeader() (bool, string) {
+	return true, ""
 }

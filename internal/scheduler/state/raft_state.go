@@ -26,23 +26,29 @@ func NewRaftState(raft *raft.Raft, ss *SchedulerState) RaftState {
 	return RaftState{raft, ss}
 }
 
-func (rs *RaftState) IsLeader() error {
-	if rs.raft.State() != raft.Leader {
-		addrs, _ := rs.raft.LeaderWithID()
-		println("redirecting to Leader")
-		addrsStr := string(addrs)
-		if addrsStr == "" {
-			return errors.New(" ")
-		}
-		return errors.New(addrsStr)
-	}
-	return nil
+func (rs *RaftState) IsLeader() (bool, string) {
+	isLeader := rs.raft.State() == raft.Leader
+	addrs, _ := rs.raft.LeaderWithID()
+	addrsStr := string(addrs)
+
+	return isLeader, addrsStr
+	//
+	// if rs.raft.State() != raft.Leader {
+	// 	addrs, _ := rs.raft.LeaderWithID()
+	// 	println("redirecting to Leader")
+	// 	addrsStr := string(addrs)
+	// 	if addrsStr == "" {
+	// 		return errors.New(" ")
+	// 	}
+	// 	return errors.New(addrsStr)
+	// }
+	// return nil
 }
 
 func (rs *RaftState) RegisterScheduler(id string, address string) error {
-	err := rs.IsLeader()
-	if err != nil {
-		return err
+	isLeader, _ := rs.IsLeader()
+	if isLeader {
+		return errors.New("not leader")
 	}
 
 	f := rs.raft.AddVoter(raft.ServerID(id), raft.ServerAddress(address), 0, 5*time.Second)
