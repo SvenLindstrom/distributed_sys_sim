@@ -12,11 +12,6 @@ import (
 
 func main() {
 
-	interval, err := strconv.Atoi(os.Getenv("INTERVAL"))
-	if err != nil {
-		println("interval not set")
-		interval = 1000
-	}
 	duration, err := strconv.Atoi(os.Getenv("DURATION"))
 	if err != nil {
 		println("duration not set")
@@ -38,7 +33,9 @@ func main() {
 	}
 	defer f.Close()
 
-	generator := generator.NewGnerator(interval, duration, timeout)
+	intervalGen := generator.NewInterval()
+
+	generator := generator.NewGenerator(duration, intervalGen, timeout)
 
 	rpc.Register(&generator)
 	rpc.HandleHTTP()
