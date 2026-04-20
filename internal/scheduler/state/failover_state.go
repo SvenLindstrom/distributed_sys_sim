@@ -17,23 +17,33 @@ func NewFailOverState(raft *raft.Raft, ss *SchedulerState) FailOverState {
 	return FailOverState{raft, ss}
 }
 
-func (rs *FailOverState) IsLeader() error {
-	if rs.raft.State() != raft.Leader {
-		addrs, _ := rs.raft.LeaderWithID()
+func (rs *FailOverState) IsLeader() (bool, string) {
+	isLeader := rs.raft.State() == raft.Leader
+
+	if !isLeader {
 		println("redirecting to Leader")
-		addrsStr := string(addrs)
-		if addrsStr == "" {
-			return errors.New(" ")
-		}
-		return errors.New(addrsStr)
 	}
-	return nil
+
+	addrs, _ := rs.raft.LeaderWithID()
+	addrsStr := string(addrs)
+	return isLeader, addrsStr
+
+	// if rs.raft.State() != raft.Leader {
+	// 	addrs, _ := rs.raft.LeaderWithID()
+	// 	println("redirecting to Leader")
+	// 	addrsStr := string(addrs)
+	// 	if addrsStr == "" {
+	// 		return false, ""
+	// 	}
+	// 	return false, addrsStr
+	// }
+	// return true, ""
 }
 
 func (rs *FailOverState) RegisterScheduler(id string, address string) error {
-	err := rs.IsLeader()
-	if err != nil {
-		return err
+	isLeader, _ := rs.IsLeader()
+	if !isLeader {
+		return errors.New("Not Leader")
 	}
 
 	f := rs.raft.AddVoter(raft.ServerID(id), raft.ServerAddress(address), 0, 5*time.Second)
