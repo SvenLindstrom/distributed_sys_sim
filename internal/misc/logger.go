@@ -9,7 +9,7 @@ import (
 func Loginit(component string) (*os.File, error) {
 	path := os.Getenv("LOGPATH")
 
-	fileName := fmt.Sprintf("./logs/%s%s.log", path, component)
+	fileName := fmt.Sprintf("./%s%s.log", path, component)
 
 	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {

@@ -11,14 +11,14 @@ import (
 
 type Generator struct {
 	duration  int
-	interval  int
+	interval  Interval
 	timout    time.Duration
 	taskTable TaskTable
 	start     chan bool
 	client    *network.RPCClient
 }
 
-func NewGnerator(duration int, interval int, timeout int) Generator {
+func NewGenerator(duration int, interval Interval, timeout int) Generator {
 	g := Generator{
 		duration,
 		interval,
@@ -76,6 +76,27 @@ func (g *Generator) ReadyForWork(address *string, ok *bool) error {
 	return nil
 }
 
+func (g *Generator) checkReSub() {
+	c := *g.client
+	var ok bool
+	for _, task := range g.taskTable.Tasks {
+		if task.done {
+			g.taskTable.RemoveTask(task)
+		} else if time.Now().Sub(task.Submit_time) > g.timout*time.Second {
+			c.Call("Scheduler.CreateTask", task, &ok)
+			g.taskTable.ReSubmit(task)
+
+			slog.Info(
+				"re-submitted",
+				"type",
+				"task",
+				"taskID",
+				task.Task.ID,
+			)
+		}
+	}
+}
+
 func (g *Generator) Run() {
 	for {
 		c := *g.client
@@ -101,23 +122,8 @@ func (g *Generator) Run() {
 			task.ID,
 		)
 
-		for _, task := range g.taskTable.Tasks {
+		g.checkReSub()
 
-			if task.done {
-				g.taskTable.RemoveTask(task)
-			} else if time.Now().Sub(task.Submit_time) > g.timout*time.Second {
-				c.Call("Scheduler.CreateTask", task, &ok)
-				g.taskTable.ReSubmit(task)
-
-				slog.Info(
-					"re-submitted",
-					"type",
-					"task",
-					"taskID",
-					task.Task.ID,
-				)
-			}
-		}
-		time.Sleep(time.Duration(g.interval) * time.Millisecond)
+		time.Sleep(g.interval.GetInterval())
 	}
 }
