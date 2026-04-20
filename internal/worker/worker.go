@@ -151,7 +151,7 @@ func (w *Worker) registerWorker() (*RegistrationReply, error) {
 		w.address,
 	)
 
-	println("Worker registration successful.")
+	println("Worker registration successful")
 
 	return &rr, nil
 }
@@ -165,7 +165,7 @@ func (w *Worker) retryRegistration() error {
 
 		switch err.Error() {
 		case "Leader not yet elected":
-			continue
+			// nothing happens
 		case "Contacted follower; redirected":
 			println("Follower contacted instead. Using provided Leader address.")
 			newLeaderAddr := strings.Split(rr.addr, ":")[0] + ":" + os.Getenv("SCHEDULER_PORT")
@@ -245,7 +245,7 @@ func (w *Worker) findNewLeader() error {
 
 	err = w.retryRegistration()
 	if err == nil {
-		println("New Leader found. Proceeding as usual.")
+		println("New Leader found")
 	}
 
 	return err
