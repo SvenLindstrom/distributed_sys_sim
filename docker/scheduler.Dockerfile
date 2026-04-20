@@ -2,8 +2,8 @@ FROM golang:1.25.1 AS builder
 
 WORKDIR /app
 
-COPY go.mod  ./
-COPY go.sum  ./
+COPY go.mod ./
+COPY go.sum ./
 
 RUN go mod download
 
@@ -15,12 +15,13 @@ COPY ./cmd/scheduler ./cmd/scheduler
 COPY ./internal/scheduler ./internal/scheduler
 
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o scheduler ./cmd/scheduler
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o app ./cmd/scheduler
 
-FROM scratch
+FROM alpine
+RUN apk add --no-cache iproute2
 
 WORKDIR /app
 
-COPY --from=builder /app/scheduler .
+COPY --from=builder /app/app .
 
-CMD ["./scheduler"]
+CMD ["./app"]

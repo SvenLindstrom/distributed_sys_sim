@@ -6,11 +6,15 @@ services:
       dockerfile: ./docker/scheduler.Dockerfile
     volumes:
       - ./logs/:/app/logs/
+      - ./start.sh:/app/start.sh
     ports:
       - 8080:8080
-    env_file: "./config"
+    env_file: "./.env"
     environment:
-      LEADER: "true"
+      - LEADER=true
+      - SETUP=${SETUP}
+      - LOGPATH=${LOGPATH}
+    command: ["/app/start.sh"]
     depends_on:
       - generator
   follower:
@@ -19,9 +23,12 @@ services:
       dockerfile: ./docker/scheduler.Dockerfile
     volumes:
       - ./logs/:/app/logs/
-    env_file: "./config"
+      - ./start.sh:/app/start.sh
+    env_file: "./.env"
     environment:
-      LEADER: ""
+      - SETUP=${SETUP}
+      - LOGPATH=${LOGPATH}
+    command: ["/app/start.sh"]
     depends_on:
       - scheduler
   worker:
@@ -30,13 +37,21 @@ services:
       dockerfile: ./docker/worker.Dockerfile
     volumes:
       - ./logs/:/app/logs
-    env_file: "./config"
+      - ./start.sh:/app/start.sh
+    env_file: "./.env"
+    environment:
+      - LOGPATH=${LOGPATH}
+    command: ["/app/start.sh"]
     depends_on:
-      - scheduler
+      - follower
   generator:
     build:
       context: .
       dockerfile: ./docker/taskgenerator.Dockerfile
-    env_file: "./config"
+    env_file: "./.env"
+    environment:
+      - LOGPATH=${LOGPATH}
     volumes:
       - ./logs/:/app/logs
+      - ./start.sh:/app/start.sh
+    command: ["/app/start.sh"]

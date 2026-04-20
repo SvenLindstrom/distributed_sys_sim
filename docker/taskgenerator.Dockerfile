@@ -11,12 +11,13 @@ COPY ./internal/generator ./internal/generator
 
 COPY ./cmd/taskgenerator ./cmd/taskgenerator
 
-RUN go build -o generator ./cmd/taskgenerator
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o app ./cmd/taskgenerator
 
-FROM debian:bookworm-slim
+FROM alpine
+RUN apk add --no-cache iproute2
 
 WORKDIR /app
 
-COPY --from=builder /app/generator .
+COPY --from=builder /app/app .
 
-CMD ["./generator"]
+CMD ["./app"]
