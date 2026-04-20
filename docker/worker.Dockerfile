@@ -13,12 +13,13 @@ COPY ./internal/task ./internal/task
 COPY ./cmd/worker ./cmd/worker
 COPY ./internal/worker ./internal/worker
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o worker ./cmd/worker
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o app ./cmd/worker
 
-FROM scratch
+FROM alpine
+RUN apk add --no-cache iproute2
 
 WORKDIR /app
 
-COPY --from=builder /app/worker .
+COPY --from=builder /app/app .
 
-CMD ["./worker"]
+CMD ["./app"]
