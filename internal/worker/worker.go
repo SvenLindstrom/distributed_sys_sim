@@ -17,7 +17,7 @@ type WorkerState int
 type RegistrationReply struct {
 	IsLeader bool
 	ID       string
-	addr     string
+	Addr     string
 }
 
 const (
@@ -129,17 +129,17 @@ func (w *Worker) registerWorker() (*RegistrationReply, error) {
 		return nil, err
 	}
 
-	if !rr.IsLeader && rr.addr == "" {
+	if !rr.IsLeader && rr.Addr == "" {
 		// retry reg
 		return nil, errors.New("Leader not yet elected")
-	} else if rr.addr != "" {
+	} else if !rr.IsLeader && rr.Addr != "" {
 		// redirected
 		return &rr, errors.New("Contacted follower; redirected")
 	}
 
 	// save Worker ID and Leader address
 	w.ID = rr.ID
-	newLeaderAddr := strings.Split(rr.addr, ":")[0] + ":" + os.Getenv("SCHEDULER_PORT")
+	newLeaderAddr := strings.Split(rr.Addr, ":")[0] + ":" + os.Getenv("SCHEDULER_PORT")
 	w.leaderAddr = newLeaderAddr
 
 	// log
@@ -165,11 +165,12 @@ func (w *Worker) retryRegistration() error {
 
 		switch err.Error() {
 		case "Leader not yet elected":
-			// nothing happens
+			time.Sleep(1 * time.Second)
+			continue
 		case "Contacted follower; redirected":
 			println("Follower contacted instead. Using provided Leader address.")
-			newLeaderAddr := strings.Split(rr.addr, ":")[0] + ":" + os.Getenv("SCHEDULER_PORT")
-			if newLeaderAddr != w.leaderAddr {
+			newLeaderAddr := strings.Split(rr.Addr, ":")[0] + ":" + os.Getenv("SCHEDULER_PORT")
+			if strings.Compare(newLeaderAddr, w.leaderAddr) != 0 {
 				w.getClient(newLeaderAddr)
 			}
 		default:
