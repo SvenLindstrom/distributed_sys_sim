@@ -4,6 +4,7 @@ import (
 	"dssim/internal/misc"
 	"dssim/internal/worker"
 	"log"
+	"log/slog"
 	"os"
 	"strings"
 )
@@ -32,6 +33,9 @@ func main() {
 
 	if err := w.Run(); err != nil {
 		log.Fatal(err)
+		slog.Error(
+			"Process terminated",
+			"error", err,
+		)
 	}
-
 }
