@@ -25,7 +25,7 @@ func (m *MockRPCClient) Call(serviceName string, args, reply any) error {
 	case *bool:
 		*r = true
 	case *RegistrationReply:
-		*r = RegistrationReply{IsLeader: true, ID: "mock-worker-id", addr: ""}
+		*r = RegistrationReply{IsLeader: true, ID: "mock-worker-id", Addr: ""}
 	}
 
 	return nil
