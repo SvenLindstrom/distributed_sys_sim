@@ -43,7 +43,7 @@ services:
       - LOGPATH=${LOGPATH}
     command: ["/app/start.sh"]
     depends_on:
-      - follower
+      - scheduler 
   generator:
     build:
       context: .
