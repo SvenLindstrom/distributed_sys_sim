@@ -27,17 +27,6 @@ func (rs *FailOverState) IsLeader() (bool, string) {
 	addrs, _ := rs.raft.LeaderWithID()
 	addrsStr := string(addrs)
 	return isLeader, addrsStr
-
-	// if rs.raft.State() != raft.Leader {
-	// 	addrs, _ := rs.raft.LeaderWithID()
-	// 	println("redirecting to Leader")
-	// 	addrsStr := string(addrs)
-	// 	if addrsStr == "" {
-	// 		return false, ""
-	// 	}
-	// 	return false, addrsStr
-	// }
-	// return true, ""
 }
 
 func (rs *FailOverState) RegisterScheduler(id string, address string) error {
@@ -59,7 +48,7 @@ func (ss *FailOverState) AddTask(task *task.Task) error {
 	return ss.data.AddTask(task)
 }
 
-func (ss *FailOverState) NextTask() (*task.Task, bool) {
+func (ss *FailOverState) NextTask() *task.Task {
 	return ss.data.NextTask()
 }
 

@@ -23,7 +23,7 @@ func NewGenerator(duration int, interval Interval, timeout int) Generator {
 		duration,
 		interval,
 		time.Duration(timeout),
-		TaskTable{make(map[string]*TaskRec)},
+		TaskTable{Tasks: make(map[string]*TaskRec)},
 		make(chan bool),
 		nil,
 	}
@@ -32,7 +32,8 @@ func NewGenerator(duration int, interval Interval, timeout int) Generator {
 }
 
 func (g *Generator) TaskCompleted(taskId *string, ok *bool) error {
-	g.taskTable.TaskDone(*taskId)
+	// g.taskTable.TaskDone(*taskId)
+	g.taskTable.RemoveTask(taskId)
 	*ok = true
 	slog.Info(
 		"done",
@@ -79,11 +80,13 @@ func (g *Generator) ReadyForWork(address *string, ok *bool) error {
 func (g *Generator) checkReSub() {
 	c := *g.client
 	var ok bool
-	for _, task := range g.taskTable.Tasks {
-		if task.done {
-			g.taskTable.RemoveTask(task)
-		} else if time.Now().Sub(task.Submit_time) > g.timout*time.Second {
-			c.Call("Scheduler.CreateTask", task, &ok)
+
+	for _, task := range g.taskTable.GetCopy() {
+		if time.Now().Sub(task.Submit_time) > g.timout*time.Second {
+			err := c.Call("Scheduler.CreateTask", task, &ok)
+			if err != nil {
+				continue
+			}
 			g.taskTable.ReSubmit(task)
 
 			slog.Info(

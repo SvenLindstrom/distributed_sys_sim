@@ -32,17 +32,6 @@ func (rs *RaftState) IsLeader() (bool, string) {
 	addrsStr := string(addrs)
 
 	return isLeader, addrsStr
-	//
-	// if rs.raft.State() != raft.Leader {
-	// 	addrs, _ := rs.raft.LeaderWithID()
-	// 	println("redirecting to Leader")
-	// 	addrsStr := string(addrs)
-	// 	if addrsStr == "" {
-	// 		return errors.New(" ")
-	// 	}
-	// 	return errors.New(addrsStr)
-	// }
-	// return nil
 }
 
 func (rs *RaftState) RegisterScheduler(id string, address string) error {
@@ -80,11 +69,19 @@ func (rs *RaftState) AddTask(task *task.Task) error {
 	return nil
 }
 
-func (rs *RaftState) NextTask() (*task.Task, bool) {
-	if len(rs.data.pendding) == 0 {
-		return &task.Task{}, false
-	}
-	return rs.data.pendding[0], true
+func (rs *RaftState) NextTask() *task.Task {
+	return rs.data.NextTask()
+	// if len(rs.data.pendding) == 0 {
+	// 	return &task.Task{}, false
+	// }
+	//
+	// t := rs.data.pendding[0]
+	// if t == nil {
+	// 	println("AAAAAAAAAAAAAA")
+	// 	println(len(rs.data.pendding))
+	// }
+	//
+	// return t, true
 }
 
 func (rs *RaftState) AssignedTask(task *task.Task, workerId string) error {
