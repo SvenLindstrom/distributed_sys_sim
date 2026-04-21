@@ -47,7 +47,7 @@ func (rs *RaftState) IsLeader() (bool, string) {
 
 func (rs *RaftState) RegisterScheduler(id string, address string) error {
 	isLeader, _ := rs.IsLeader()
-	if isLeader {
+	if !isLeader {
 		return errors.New("not leader")
 	}
 
