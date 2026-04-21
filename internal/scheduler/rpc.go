@@ -139,7 +139,6 @@ func (s *RpcInterface) RegisterWorker(args *string, reply *RegistrationReply) er
 
 func (s *RpcInterface) RegisterScheduler(reg *raft.Server, res *bool) error {
 	err := s.state.RegisterScheduler(string(reg.ID), string(reg.Address))
-
 	return err
 }
 

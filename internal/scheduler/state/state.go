@@ -7,7 +7,7 @@ import (
 
 type State interface {
 	AddTask(task *task.Task) error
-	NextTask() (*task.Task, bool)
+	NextTask() *task.Task
 	AssignedTask(task *task.Task, workerId string) error
 	CompleteTask(taskId string, workerId string) error
 	RegisterScheduler(id string, address string) error
@@ -30,11 +30,11 @@ func (ss *SchedulerState) AddTask(task *task.Task) error {
 	return nil
 }
 
-func (ss *SchedulerState) NextTask() (*task.Task, bool) {
+func (ss *SchedulerState) NextTask() *task.Task {
 	if len(ss.pendding) == 0 {
-		return &task.Task{}, false
+		return nil
 	}
-	return ss.pendding[0], true
+	return ss.pendding[0]
 }
 
 func (ss *SchedulerState) AssignedTask(task *task.Task, workerId string) error {

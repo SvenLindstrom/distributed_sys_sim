@@ -26,8 +26,8 @@ func NewScheduler(
 func (s *Scheduler) Run() {
 	println("scheduler running")
 	for s.RunLoop {
-		task, available := s.state.NextTask()
-		if !available {
+		task := s.state.NextTask()
+		if task == nil {
 			continue
 		}
 
