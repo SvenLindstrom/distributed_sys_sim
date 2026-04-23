@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 from collections import defaultdict
+from pathlib import Path
 
 ## UTILITIES
 
@@ -153,8 +154,29 @@ def get_duplication(assigned):
 ## ANALYSIS LEVELS
 
 # Per Trial
-def run_trial():
-    pass
+def run_trial(trial_dir):
+    # Get logs
+    gen_logs = get_logs(trial_dir / "generator.log")
+    sch_logs = get_logs(trial_dir / "scheduler.log")
+
+    # Data Extraction
+    gen_data = get_generator_data(gen_logs)
+    assigned, completed = get_scheduler_data(sch_logs)
+
+    # Get Metrics
+    latency = get_latency(gen_data)
+    throughput = get_throughput(completed)
+    duplication = get_duplication(assigned)
+
+    trial_result = {
+        "configuration": trial_path.parent.name,
+        "trial_num": trial_path.name.split('_')[1],
+        "latency": latency,
+        "throughput": throughput,
+        "duplication": duplication
+    }
+
+    return trial_result
 
 # Per Configuration
 def run_configuration():
@@ -167,17 +189,8 @@ def run_all():
 ## MAIN
 
 def main():
-    gen_logs = get_logs('logs/generator.log')
-    sch_logs = get_logs('logs/scheduler.log')
-
-    gen_data = get_generator_data(gen_logs)
-    assigned, completed = get_scheduler_data(sch_logs)
-
-    latency = get_latency(gen_data)
-    throughput = get_throughput(completed)
-    duplication = get_duplication(assigned)
-
-    print(duplication)
+    res = run_trial("logs/baseline/trial_1/")
+    print(res)
 
 if __name__ == "__main__":
     main()
