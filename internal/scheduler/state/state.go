@@ -3,6 +3,7 @@ package state
 import (
 	"dssim/internal/task"
 	"errors"
+	"sync"
 )
 
 type State interface {
@@ -17,36 +18,66 @@ type State interface {
 type SchedulerState struct {
 	pendding []*task.Task
 	running  map[string]*task.Task
+	reserved map[string]bool
+	mu       sync.Mutex
 }
 
 func NewSchedulerState(taskQueueSize int) *SchedulerState {
 	var list []*task.Task
 	taskMap := make(map[string]*task.Task)
-	return &SchedulerState{list, taskMap}
+	reservedMap := make(map[string]bool)
+	return &SchedulerState{pendding: list, running: taskMap, reserved: reservedMap}
 }
 
 func (ss *SchedulerState) AddTask(task *task.Task) error {
+	ss.mu.Lock()
 	ss.pendding = append(ss.pendding, task)
+	ss.mu.Unlock()
 	return nil
 }
 
 func (ss *SchedulerState) NextTask() *task.Task {
-	if len(ss.pendding) == 0 {
-		return nil
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
+	// if len(ss.pendding) != 0 {
+	// 	return nil
+	// }
+
+	for _, t := range ss.pendding {
+		if !ss.reserved[t.ID] {
+			println(len(ss.pendding))
+			ss.reserved[t.ID] = true
+			return t
+		}
 	}
-	return ss.pendding[0]
+
+	return nil
 }
 
 func (ss *SchedulerState) AssignedTask(task *task.Task, workerId string) error {
-	ss.pendding = ss.pendding[1:]
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
+
+	for i, t := range ss.pendding {
+		if t.ID == task.ID {
+			ss.pendding = append(ss.pendding[:i], ss.pendding[i+1:]...)
+			break
+		}
+	}
+	// ss.pendding = ss.pendding[1:]
+	delete(ss.reserved, task.ID)
 	ss.running[workerId] = task
 	return nil
 }
 
 func (ss *SchedulerState) CompleteTask(taskId string, workerId string) error {
+	ss.mu.Lock()
+	defer ss.mu.Unlock()
 	if task := ss.running[workerId]; task != nil {
 		if task.ID == taskId {
 			delete(ss.running, workerId)
+		} else {
+			println("AAAAAAAAAAAAAAAAAAAAA")
 		}
 		return nil
 	}

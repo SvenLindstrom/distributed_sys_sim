@@ -18,6 +18,13 @@ type TaskTable struct {
 	mu    sync.Mutex
 }
 
+func (jt *TaskTable) Missing(id string) bool {
+	jt.mu.Lock()
+	missing := jt.Tasks[id] != nil
+	jt.mu.Unlock()
+	return missing
+}
+
 func (jt *TaskTable) GetCopy() map[string]*TaskRec {
 	jt.mu.Lock()
 	taskCopy := make(map[string]*TaskRec, len(jt.Tasks))

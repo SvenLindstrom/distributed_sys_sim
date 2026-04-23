@@ -3,7 +3,9 @@ package scheduler
 import (
 	"dssim/internal/scheduler/state"
 	"dssim/internal/scheduler/worker"
+	"dssim/internal/task"
 	"log/slog"
+	"time"
 )
 
 type Scheduler struct {
@@ -23,33 +25,40 @@ func NewScheduler(
 	}
 }
 
+func (s *Scheduler) sendTask(t *task.Task, w *worker.Worker) {
+	// start := time.Now()
+	err := s.state.AssignedTask(t, w.ID)
+	if err != nil {
+		println(err.Error())
+		return
+	}
+	// fmt.Printf("apply took %v\n", time.Since(start))
+
+	ok := w.AssignTask(t)
+	slog.Info(
+		"assigned",
+		"type",
+		"task",
+		"taskID",
+		t.ID,
+		"workerID",
+		w.ID,
+		"success",
+		ok,
+	)
+}
+
 func (s *Scheduler) Run() {
 	println("scheduler running")
 	for s.RunLoop {
-		task := s.state.NextTask()
-		if task == nil {
+		t := s.state.NextTask()
+		if t == nil {
+			time.Sleep(1 * time.Millisecond)
 			continue
 		}
 
-		worker := s.workers.GetWorker()
+		w := s.workers.GetWorker()
 
-		err := s.state.AssignedTask(task, worker.ID)
-
-		if err != nil {
-			println(err.Error())
-		}
-
-		ok := worker.AssignTask(task)
-		slog.Info(
-			"assigned",
-			"type",
-			"task",
-			"taskID",
-			task.ID,
-			"workerID",
-			worker.ID,
-			"success",
-			ok,
-		)
+		go s.sendTask(t, w)
 	}
 }
