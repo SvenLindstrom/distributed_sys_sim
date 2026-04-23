@@ -48,8 +48,30 @@ def get_scheduler_data():
 ## METRICS
 
 # Task Latency
-def get_latency():
-    pass
+def get_latency(data):
+    latencies = []
+    incomplete = []
+
+    # Subtract Timestamps to get Timedeltas
+    for task_id, timestamps in data.items():
+        if timestamps["done"] is not None:
+            diff = timestamps["done"] - timestamps["submitted"]
+            latencies.append(diff)
+        else:
+            incomplete.append(task_id)
+
+    latencies = pd.Series(latencies).sort_values()
+    
+    latency_result = {
+        "completed_count": len(latencies),
+        "incomplete_count": len(incomplete),
+        "min": latencies.iloc[0].total_seconds(),
+        "max": latencies.iloc[-1].total_seconds(),
+        "mean": latencies.mean().total_seconds(),
+        "std": latencies.std().total_seconds(),
+    }
+
+    return latency_result
 
 # Task Throughput
 def get_throughput():
@@ -78,8 +100,9 @@ def run_all():
 def main():
     gen_logs = get_logs('logs/generator.log')
     gen_data = get_generator_data(gen_logs)
+    latency = get_latency(gen_data)
 
-    print(gen_data)
+    print(latency)
 
 if __name__ == "__main__":
     main()
