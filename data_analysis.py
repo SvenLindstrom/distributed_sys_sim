@@ -1,6 +1,8 @@
 import json
 
-# read log file and return a list of logs
+## UTILITIES
+
+# Get logs
 def get_logs(filename):
     logs = []
 
@@ -13,6 +15,46 @@ def get_logs(filename):
                 logs.append(json_log)
     
     return logs
+
+## DATA EXTRACTION
+
+# From Task Generator
+def get_generator_data():
+    pass
+
+# From Scheduler
+def get_scheduler_data():
+    pass
+
+## METRICS
+
+# Task Latency
+def get_latency():
+    pass
+
+# Task Throughput
+def get_throughput():
+    pass
+
+# Task Duplication
+def get_duplication():
+    pass
+
+## ANALYSIS LEVELS
+
+# Per Trial
+def run_trial():
+    pass
+
+# Per Configuration
+def run_configuration():
+    pass
+
+# Everything
+def run_all():
+    pass
+
+## MAIN
 
 def main():
     gen_logs = get_logs('logs/generator.log')
