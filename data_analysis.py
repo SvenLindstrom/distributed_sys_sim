@@ -123,8 +123,32 @@ def get_throughput(completed):
     return throughput_result
 
 # Task Duplication
-def get_duplication():
-    pass
+def get_duplication(assigned):
+    window = pd.Timedelta(seconds=60.0)
+    start = min([ts_list[0] for ts_list in assigned.values()])
+
+    # All tasks that got assigned in the first minute
+    in_window = {}
+    for task_id, ts_list in assigned.items():
+        if ts_list[0] - start <= window:
+            in_window[task_id] = ts_list
+    
+    total = len(in_window)
+    duplicated_ids = [task_id for task_id, ts_list in in_window.items() if len(ts_list) > 1]
+    duplicated = len(duplicated_ids)
+    extra_assignments = sum(len(in_window[task_id]) - 1 for task_id in duplicated_ids)
+    rate = (duplicated / total * 100) if total > 0 else 0.0
+ 
+    duplication_result = {
+        "window": window.total_seconds(),
+        "total_tasks_in_window": total,
+        "duplicated_tasks": duplicated,
+        "extra_assignments": extra_assignments,
+        "duplication_rate_pct": round(rate, 3),
+        "duplicated_task_ids": duplicated_ids,
+    }
+
+    return duplication_result
 
 ## ANALYSIS LEVELS
 
@@ -151,8 +175,9 @@ def main():
 
     latency = get_latency(gen_data)
     throughput = get_throughput(completed)
+    duplication = get_duplication(assigned)
 
-    print(throughput)
+    print(duplication)
 
 if __name__ == "__main__":
     main()
