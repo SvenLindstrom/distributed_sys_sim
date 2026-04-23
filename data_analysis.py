@@ -92,8 +92,35 @@ def get_latency(data):
     return latency_result
 
 # Task Throughput
-def get_throughput():
-    pass
+def get_throughput(completed):
+    timestamps = sorted(completed.values())
+    window = pd.Timedelta(seconds=1.0)
+
+    # Create buckets to keep track of TPS
+    t0 = timestamps[0]
+    buckets = defaultdict(int)
+
+    for ts in timestamps:
+        bucket = int((ts - t0) / window)
+        buckets[bucket] += 1
+    
+    duration = (timestamps[-1] - t0).total_seconds()
+    tps = pd.Series(buckets.values())
+    
+    if len(timestamps) == sum(tps):
+        total = sum(tps)
+
+    throughput_result = {
+        "total_completed": total,
+        "window": window.total_seconds(),
+        "tasks_per_second": tps.tolist(),
+        "mean_tps": tps.mean(),
+        "total_duration": duration,
+        "peak_tps": max(tps),
+        "std": tps.std(),
+    }
+
+    return throughput_result
 
 # Task Duplication
 def get_duplication():
@@ -123,9 +150,9 @@ def main():
     assigned, completed = get_scheduler_data(sch_logs)
 
     latency = get_latency(gen_data)
+    throughput = get_throughput(completed)
 
-    print(assigned)
-    print(completed)
+    print(throughput)
 
 if __name__ == "__main__":
     main()
