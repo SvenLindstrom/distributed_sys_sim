@@ -3,6 +3,7 @@ package generator
 import (
 	"dssim/internal/network"
 	"dssim/internal/task"
+	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -66,6 +67,7 @@ func (g *Generator) ReadyForWork(address *string, ok *bool) error {
 	if g.client == nil {
 		g.client = &client
 		go g.Run()
+		go g.checkReSub()
 	} else {
 		println("new client")
 		g.client = &client
@@ -78,55 +80,84 @@ func (g *Generator) ReadyForWork(address *string, ok *bool) error {
 }
 
 func (g *Generator) checkReSub() {
-	c := *g.client
-	var ok bool
+	for {
+		c := *g.client
+		var ok bool
 
-	for _, task := range g.taskTable.GetCopy() {
-		if time.Now().Sub(task.Submit_time) > g.timout*time.Second {
-			err := c.Call("Scheduler.CreateTask", task, &ok)
-			if err != nil {
-				continue
+		list := g.taskTable.GetCopy()
+		println(len(list))
+		for _, t := range list {
+			if time.Now().Sub(t.Submit_time) > g.timout*time.Second {
+				if !g.taskTable.Missing(t.Task.ID) {
+					continue
+				}
+				fmt.Printf("%+v, time now %+v \n", t, time.Now())
+				err := c.Call("Scheduler.CreateTask", t.Task, &ok)
+				if err != nil {
+					break
+				}
+				println("re doooooone")
+				g.taskTable.ReSubmit(t)
+
+				slog.Info(
+					"re-submitted",
+					"type",
+					"task",
+					"taskID",
+					t.Task.ID,
+				)
 			}
-			g.taskTable.ReSubmit(task)
-
-			slog.Info(
-				"re-submitted",
-				"type",
-				"task",
-				"taskID",
-				task.Task.ID,
-			)
 		}
+		time.Sleep(1 * time.Second)
 	}
 }
 
+func (g *Generator) send(t *task.Task) error {
+	c := *g.client
+	var ok bool
+	err := c.Call("Scheduler.CreateTask", t, &ok)
+	if err != nil {
+		return err
+	}
+	g.taskTable.TaskSubmitted(*t)
+	slog.Info(
+		"submitted",
+		"type",
+		"task",
+		"taskID",
+		t.ID,
+	)
+	return nil
+}
+
 func (g *Generator) Run() {
+	sem := make(chan struct{}, 100)
 	for {
-		c := *g.client
+		// c := *g.client
 
-		task, err := task.CreateTask(g.duration)
+		t, err := task.CreateTask(g.duration)
 		if err != nil {
 			continue
 		}
 
-		var ok bool
+		// var ok bool
+		// err = c.Call("Scheduler.CreateTask", task, &ok)
+		// if err != nil {
+		// 	continue
+		// }
+		//
+		// g.taskTable.TaskSubmitted(*task)
 
-		err = c.Call("Scheduler.CreateTask", task, &ok)
-		if err != nil {
-			continue
-		}
+		sem <- struct{}{}
 
-		g.taskTable.TaskSubmitted(*task)
-		slog.Info(
-			"submitted",
-			"type",
-			"task",
-			"taskID",
-			task.ID,
-		)
+		go func(t *task.Task) {
+			defer func() { <-sem }()
+			g.send(t)
+		}(t)
 
-		g.checkReSub()
+		// go g.send(task)
 
 		time.Sleep(g.interval.GetInterval())
+		// time.Sleep(10 * time.Second)
 	}
 }
