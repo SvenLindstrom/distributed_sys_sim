@@ -1,5 +1,6 @@
 import json
 import pandas as pd
+from collections import defaultdict
 
 ## UTILITIES
 
@@ -42,8 +43,25 @@ def get_generator_data(logs):
     return tasks
 
 # From Scheduler
-def get_scheduler_data():
-    pass
+def get_scheduler_data(logs):
+    assigned = defaultdict(list)
+    completed = {}
+
+    for log in logs:
+        task_id = log.get("taskID")
+        # Ignore non-task-related logs
+        if not task_id:
+            continue
+
+        timestamp = to_timestamp(log["time"])
+        message = log["msg"]
+
+        if message == "assigned":
+            assigned[task_id].append(timestamp)
+        elif message == "completed":
+            completed[task_id] = timestamp
+
+    return assigned, completed
 
 ## METRICS
 
@@ -99,10 +117,15 @@ def run_all():
 
 def main():
     gen_logs = get_logs('logs/generator.log')
+    sch_logs = get_logs('logs/scheduler.log')
+
     gen_data = get_generator_data(gen_logs)
+    assigned, completed = get_scheduler_data(sch_logs)
+
     latency = get_latency(gen_data)
 
-    print(latency)
+    print(assigned)
+    print(completed)
 
 if __name__ == "__main__":
     main()
