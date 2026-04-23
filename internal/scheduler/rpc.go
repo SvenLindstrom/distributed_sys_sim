@@ -7,7 +7,6 @@ import (
 	"dssim/internal/scheduler/worker"
 	"dssim/internal/task"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"net/rpc"
@@ -59,10 +58,9 @@ func (s *RpcInterface) NotifiyGenerator() bool {
 }
 
 func (s *RpcInterface) CreateTask(task *task.Task, reply *bool) error {
-	println("Task recived")
+	// println("Task recived")
 	err := s.state.AddTask(task)
 	if err != nil {
-		*reply = false
 		return err
 	}
 	*reply = true
@@ -76,22 +74,29 @@ func (s *RpcInterface) CreateTask(task *task.Task, reply *bool) error {
 	return nil
 }
 
+func (s *RpcInterface) notifyTaskCompleted(id string) {
+	var ok bool
+	s.client.Call("Generator.TaskCompleted", &id, &ok)
+	// println("Task send")
+}
+
 func (s *RpcInterface) CompleteTask(args *task.TaskResult, reply *bool) error {
 	if isLeader, _ := s.state.IsLeader(); !isLeader {
 		return errors.New("Not Leader")
 	}
 
-	println("Task completed")
+	// println("Task completed")
 	err := s.state.CompleteTask(args.TaskID, args.WorkerID)
 	if err != nil {
+		println(err.Error())
 		*reply = false
 		return nil
 	}
 
 	s.workers.TaskCompleted(args.WorkerID)
 	*reply = true
-	var ok bool
-	s.client.Call("Generator.TaskCompleted", &args.TaskID, &ok)
+
+	go s.notifyTaskCompleted(args.TaskID)
 
 	slog.Info(
 		"completed",
@@ -111,7 +116,7 @@ func (s *RpcInterface) RegisterWorker(args *string, reply *RegistrationReply) er
 	isLeader, addr := s.state.IsLeader()
 	if !isLeader {
 		*reply = RegistrationReply{IsLeader: false, Addr: addr, ID: ""}
-		fmt.Printf("%+v\n", reply)
+		// fmt.Printf("%+v\n", reply)
 		return nil
 	}
 
