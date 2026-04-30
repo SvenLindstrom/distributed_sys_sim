@@ -189,6 +189,7 @@ def run_configuration(config_dir, output_path):
     trial_results = []
 
     for trial_dir in trial_dirs:
+        print(f"Analysing Trial {trial_dir.name[-1]} out of {len(trial_dirs)}")
         result = run_trial(trial_dir)
         trial_results.append(result)
     
@@ -246,12 +247,17 @@ def run_all(logs_dir, output_dir):
     config_results = {}
 
     for config_dir in config_dirs:
+        print(f"Starting {config_dir.name} Configuration Analysis...")
         result = run_configuration(config_dir, output_path)
+        print(f"{config_dir.name} Configuration Analysis Completed!")
         config_results[config_dir.name] = result
+
+    print("Full Analysis Completed")
     
     # save general results
     res_path = output_path / "final_results.json"
     save_to_file(config_results, res_path)
+    print(f"Saved All Analysis Results to JSON files in {output_path}/")
 
     return config_results
 
