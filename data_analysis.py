@@ -173,7 +173,6 @@ def run_trial(trial_dir):
     duplication = get_duplication(assigned)
 
     trial_result = {
-        "configuration": trial_path.parent.name,
         "trial_num": trial_path.name.split('_')[1],
         "latency": latency,
         "throughput": throughput,
@@ -183,7 +182,7 @@ def run_trial(trial_dir):
     return trial_result
 
 # Per Configuration
-def run_configuration(config_dir):
+def run_configuration(config_dir, output_path):
     config_path = Path(config_dir)
 
     # get trial dirs
@@ -198,9 +197,16 @@ def run_configuration(config_dir):
 
     config_result = {
         "configuration": config_path.name,
-        "trials": trial_results,
         "summary": summary,
     }
+
+    # Save Results per Configuration
+    res_path = output_path / f"{config_path.name}_results.json"
+    data = {
+        "configuration": config_path.name,
+        "trials": trial_results
+    }
+    save_to_file(data, res_path)
 
     return config_result
 
@@ -231,24 +237,22 @@ def summarise_metric(metric_values):
     return trial_summary
 
 # Everything
-def run_all(logs_dir, output_dir=None):
+def run_all(logs_dir, output_dir):
     logs_path = Path(logs_dir)
-
-    if output_dir:
-        output_path = Path(output_dir)
-        output_path.mkdir(parents=True, exist_ok=True)
+    output_path = Path(output_dir)
+    output_path.mkdir(parents=True, exist_ok=True)
 
     # get config dirs
     config_dirs = sorted([dir for dir in logs_path.iterdir()])
     config_results = {}
 
     for config_dir in config_dirs:
-        result = run_configuration(config_dir)
+        result = run_configuration(config_dir, output_path)
         config_results[config_dir.name] = result
     
-    if output_dir:
-        res_path = output_path / "results.json"
-        save_to_file(config_results, res_path)
+    # save general results
+    res_path = output_path / "final_results.json"
+    save_to_file(config_results, res_path)
 
     return config_results
 
