@@ -5,6 +5,7 @@ set -e
 TRIALS=1
 TRIAL_DURATION=10
 LOGDIR="logs"
+RESULTS_DIR="results"
 WORKERS=3
 FOLLOWERS=2
 
@@ -39,3 +40,17 @@ runVariant(){
 for i in "${variants[@]}"; do
 	runVariant "$i"
 done
+
+## Data Analysis
+
+# create venv
+if [ ! -d "venv" ]; then
+	python -m venv venv
+fi
+
+# install modules
+venv/bin/pip install -r requirements.txt
+
+# run script
+echo "Initialising Data Analysis of generated logs..."
+venv/bin/python data_analysis.py --input-dir $LOGDIR/ --output-dir $RESULTS_DIR/
