@@ -3,6 +3,7 @@ import pandas as pd
 from collections import defaultdict
 from pathlib import Path
 from pprint import pprint
+import argparse
 
 ## UTILITIES
 
@@ -230,8 +231,12 @@ def summarise_metric(metric_values):
     return trial_summary
 
 # Everything
-def run_all(logs_dir):
+def run_all(logs_dir, output_dir=None):
     logs_path = Path(logs_dir)
+
+    if output_dir:
+        output_path = Path(output_dir)
+        output_path.mkdir(parents=True, exist_ok=True)
 
     # get config dirs
     config_dirs = sorted([dir for dir in logs_path.iterdir()])
@@ -240,14 +245,41 @@ def run_all(logs_dir):
     for config_dir in config_dirs:
         result = run_configuration(config_dir)
         config_results[config_dir.name] = result
+    
+    if output_dir:
+        res_path = output_path / "results.json"
+        save_to_file(config_results, res_path)
 
     return config_results
+
+## SAVE RESULTS
+
+def save_to_file(data, path):
+    with open(path, "w") as file:
+        json.dump(data, file, indent=4)
 
 ## MAIN
 
 def main():
-    res = run_all("logs/")
-    pprint(res)
+    ## CLA
+    parser = argparse.ArgumentParser()
+
+    # Input directory to analyse
+    parser.add_argument(
+        "--input-dir",
+        help="Root log directory containing all configuration subdirectories"
+    )
+
+    # Output directory to save results
+    parser.add_argument(
+        "--output-dir",
+        help="Destination directory to write JSON result files"
+    )
+
+    args = parser.parse_args()
+
+    ## ANALYSIS
+    run_all(args.input_dir, args.output_dir)
 
 if __name__ == "__main__":
     main()
