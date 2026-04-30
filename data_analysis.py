@@ -2,6 +2,7 @@ import json
 import pandas as pd
 from collections import defaultdict
 from pathlib import Path
+from pprint import pprint
 
 ## UTILITIES
 
@@ -84,8 +85,8 @@ def get_latency(data):
     latency_result = {
         "completed_count": len(latencies),
         "incomplete_count": len(incomplete),
-        "min": latencies.iloc[0].total_seconds(),
-        "max": latencies.iloc[-1].total_seconds(),
+        "min": latencies.min().total_seconds(),
+        "max": latencies.max().total_seconds(),
         "mean": latencies.mean().total_seconds(),
         "std": latencies.std().total_seconds(),
     }
@@ -145,7 +146,7 @@ def get_duplication(assigned):
         "total_tasks_in_window": total,
         "duplicated_tasks": duplicated,
         "extra_assignments": extra_assignments,
-        "duplication_rate_pct": round(rate, 3),
+        "dup_rate": round(rate, 3),
         "duplicated_task_ids": duplicated_ids,
     }
 
@@ -155,9 +156,11 @@ def get_duplication(assigned):
 
 # Per Trial
 def run_trial(trial_dir):
+    trial_path = Path(trial_dir)
+
     # Get logs
-    gen_logs = get_logs(trial_dir / "generator.log")
-    sch_logs = get_logs(trial_dir / "scheduler.log")
+    gen_logs = get_logs(trial_path / "generator.log")
+    sch_logs = get_logs(trial_path / "scheduler.log")
 
     # Data Extraction
     gen_data = get_generator_data(gen_logs)
@@ -179,8 +182,52 @@ def run_trial(trial_dir):
     return trial_result
 
 # Per Configuration
-def run_configuration():
-    pass
+def run_configuration(config_dir):
+    config_path = Path(config_dir)
+
+    # get trial dirs
+    trial_dirs = sorted([dir for dir in config_path.iterdir()])
+    trial_results = []
+
+    for trial_dir in trial_dirs:
+        result = run_trial(trial_dir)
+        trial_results.append(result)
+    
+    summary = summarise_trials(trial_results)
+
+    config_result = {
+        "configuration": config_path.name,
+        "trials": trial_results,
+        "summary": summary,
+    }
+
+    return config_result
+
+def summarise_trials(trial_results):
+    latency_summary = summarise_metric([trial["latency"]["mean"] for trial in trial_results])
+    throughput_summary = summarise_metric([trial["throughput"]["mean_tps"] for trial in trial_results])
+    duplication_summary = summarise_metric([trial["duplication"]["dup_rate"] for trial in trial_results])
+
+    full_summary = {
+        "trial_count": len(trial_results),
+        "latency": latency_summary,
+        "throughput": throughput_summary,
+        "duplication": duplication_summary,
+    }
+
+    return full_summary
+
+def summarise_metric(metric_values):
+    values = pd.Series(metric_values)
+    
+    trial_summary = {
+        "mean": values.mean(),
+        "std":  values.std(),
+        "min":  values.min(),
+        "max":  values.max(),
+    }
+
+    return trial_summary
 
 # Everything
 def run_all():
@@ -189,8 +236,8 @@ def run_all():
 ## MAIN
 
 def main():
-    res = run_trial("logs/baseline/trial_1/")
-    print(res)
+    res = run_configuration("logs/ELECTION-REPLICATION/")
+    pprint(res)
 
 if __name__ == "__main__":
     main()
