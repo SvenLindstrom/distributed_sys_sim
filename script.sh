@@ -11,7 +11,7 @@ FOLLOWERS=2
 variants=(
 	"BASE"
 	"FAILOVER"
-	"REPLICATION"
+	"ELECTION-REPLICATION"
 	)
 
 runTrial(){
