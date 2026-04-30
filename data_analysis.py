@@ -230,13 +230,23 @@ def summarise_metric(metric_values):
     return trial_summary
 
 # Everything
-def run_all():
-    pass
+def run_all(logs_dir):
+    logs_path = Path(logs_dir)
+
+    # get config dirs
+    config_dirs = sorted([dir for dir in logs_path.iterdir()])
+    config_results = {}
+
+    for config_dir in config_dirs:
+        result = run_configuration(config_dir)
+        config_results[config_dir.name] = result
+
+    return config_results
 
 ## MAIN
 
 def main():
-    res = run_configuration("logs/ELECTION-REPLICATION/")
+    res = run_all("logs/")
     pprint(res)
 
 if __name__ == "__main__":
