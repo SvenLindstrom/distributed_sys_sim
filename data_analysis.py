@@ -88,6 +88,7 @@ def get_latency(data):
         "min": latencies.min().total_seconds(),
         "max": latencies.max().total_seconds(),
         "mean": latencies.mean().total_seconds(),
+        "median": latencies.median().total_seconds(),
         "std": latencies.std().total_seconds(),
     }
 
@@ -211,7 +212,7 @@ def run_configuration(config_dir, output_path):
     return config_result
 
 def summarise_trials(trial_results):
-    latency_summary = summarise_metric([trial["latency"]["mean"] for trial in trial_results])
+    latency_summary = summarise_metric([trial["latency"]["median"] for trial in trial_results])
     throughput_summary = summarise_metric([trial["throughput"]["mean_tps"] for trial in trial_results])
     duplication_summary = summarise_metric([trial["duplication"]["dup_rate"] for trial in trial_results])
 
@@ -228,7 +229,7 @@ def summarise_metric(metric_values):
     values = pd.Series(metric_values)
     
     trial_summary = {
-        "mean": values.mean(),
+        "mean (of medians for latency)": values.mean(),
         "std":  values.std(),
         "min":  values.min(),
         "max":  values.max(),
