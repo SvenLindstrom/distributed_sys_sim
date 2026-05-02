@@ -5,37 +5,52 @@ set -e
 TRIALS=1
 TRIAL_DURATION=10
 LOGDIR="logs"
+RESULTS_DIR="results"
 WORKERS=3
 FOLLOWERS=2
 
-verients=(
+variants=(
 	"BASE"
-	"FAIL_OVER"
-	"REPLICATION"
+	"FAILOVER"
+	"ELECTION-REPLICATION"
 	)
 
 runTrial(){
-	VERIANT=$1
+	VARIANT=$1
 	LOGPATH=$2
 
-	SETUP=$VERIANT LOGPATH=$LOGPATH docker compose up -d --scale worker=${WORKERS} --scale follower=${FOLLOWERS}
+	SETUP=$VARIANT LOGPATH=$LOGPATH docker compose up -d --scale worker=${WORKERS} --scale follower=${FOLLOWERS}
 
-	echo "trail will run for $TRIAL_DURATION second"
+	echo "Trial will run for $TRIAL_DURATION seconds"
 	sleep $TRIAL_DURATION
-	echo "trial finished"
+	echo "Trial completed"
 	docker compose down
 }
 
-runVerient(){
-	VERIANT=$1
+runVariant(){
+	VARIANT=$1
 	for i in $(seq 1 $TRIALS); do
-		echo "Running $VERIANT trail #$i"
-		LOGPATH="$LOGDIR/$VERIANT/trial_$i"
+		echo "Running $VARIANT Trial #$i"
+		LOGPATH="$LOGDIR/$VARIANT/trial_$i"
 		mkdir -p "$LOGPATH"
-		runTrial "$VERIANT" "$LOGPATH/"
+		runTrial "$VARIANT" "$LOGPATH/"
 	done
 }
 
-for i in "${verients[@]}"; do
-	runVerient "$i"
+for i in "${variants[@]}"; do
+	runVariant "$i"
 done
+
+## Data Analysis
+
+# create venv
+if [ ! -d "venv" ]; then
+	python -m venv venv
+fi
+
+# install modules
+venv/bin/pip install -r requirements.txt
+
+# run script
+echo "Initialising Data Analysis of generated logs..."
+venv/bin/python data_analysis.py --input-dir $LOGDIR/ --output-dir $RESULTS_DIR/
