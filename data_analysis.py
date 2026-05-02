@@ -46,7 +46,6 @@ def get_generator_data(logs):
 
 # From Scheduler
 def get_scheduler_data(logs):
-    assigned = defaultdict(list)
     completed = {}
 
     for log in logs:
@@ -58,12 +57,25 @@ def get_scheduler_data(logs):
         timestamp = to_timestamp(log["time"])
         message = log["msg"]
 
-        if message == "assigned":
-            assigned[task_id].append(timestamp)
-        elif message == "completed":
+        if message == "completed":
             completed[task_id] = timestamp
 
-    return assigned, completed
+    return completed
+
+# From Worker
+def get_worker_data(logs):
+    completed = defaultdict(list)
+
+    for log in logs:
+        task_id = log.get("task")
+        # Ignore non-task-related logs
+        if not task_id:
+            continue
+
+        timestamp = to_timestamp(log["time"])
+        completed[task_id].append(timestamp)
+    
+    return completed
 
 ## METRICS
 
@@ -95,8 +107,8 @@ def get_latency(data):
     return latency_result
 
 # Task Throughput
-def get_throughput(completed):
-    timestamps = sorted(completed.values())
+def get_throughput(data):
+    timestamps = sorted(data.values())
     window = pd.Timedelta(seconds=1.0)
 
     # Create buckets to keep track of TPS
@@ -126,13 +138,13 @@ def get_throughput(completed):
     return throughput_result
 
 # Task Duplication
-def get_duplication(assigned):
+def get_duplication(data):
     window = pd.Timedelta(seconds=60.0)
-    start = min([ts_list[0] for ts_list in assigned.values()])
+    start = min([ts_list[0] for ts_list in data.values()])
 
     # All tasks that got assigned in the first minute
     in_window = {}
-    for task_id, ts_list in assigned.items():
+    for task_id, ts_list in data.items():
         if ts_list[0] - start <= window:
             in_window[task_id] = ts_list
     
@@ -160,17 +172,19 @@ def run_trial(trial_dir):
     trial_path = Path(trial_dir)
 
     # Get logs
-    gen_logs = get_logs(trial_path / "generator.log")
-    sch_logs = get_logs(trial_path / "scheduler.log")
+    generator_logs = get_logs(trial_path / "generator.log")
+    scheduler_logs = get_logs(trial_path / "scheduler.log")
+    worker_logs = get_logs(trial_path / "worker.log")
 
     # Data Extraction
-    gen_data = get_generator_data(gen_logs)
-    assigned, completed = get_scheduler_data(sch_logs)
+    generator_data = get_generator_data(generator_logs)
+    scheduler_data = get_scheduler_data(scheduler_logs)
+    worker_data = get_worker_data(worker_logs)
 
     # Get Metrics
-    latency = get_latency(gen_data)
-    throughput = get_throughput(completed)
-    duplication = get_duplication(assigned)
+    latency = get_latency(generator_data)
+    throughput = get_throughput(scheduler_data)
+    duplication = get_duplication(worker_data)
 
     trial_result = {
         "trial_num": trial_path.name.split('_')[1],
