@@ -3,6 +3,7 @@ import pandas as pd
 from collections import defaultdict
 from pathlib import Path
 import argparse
+from pprint import pprint
 
 ## UTILITIES
 
@@ -38,8 +39,8 @@ def get_generator_data(logs):
         if message == "submitted":
             if task_id not in tasks:
                 tasks[task_id] = {"submitted": timestamp, "done": None}
-        # elif message == "re-submitted":
-        #     tasks[task_id]["submitted"] = timestamp
+        elif message == "re-submitted":
+            tasks[task_id]["submitted"] = timestamp
         elif message == "done":
             if task_id in tasks:
                 tasks[task_id]["done"] = timestamp
@@ -49,20 +50,26 @@ def get_generator_data(logs):
 # From Scheduler
 def get_scheduler_data(logs):
     completed = {}
+    crash = []
 
     for log in logs:
         task_id = log.get("taskID")
+        log_type = log.get("type")
+        timestamp = to_timestamp(log["time"])
+
+        if log_type == "fault injector":
+            crash.append(timestamp)
+
         # Ignore non-task-related logs
         if not task_id:
             continue
 
-        timestamp = to_timestamp(log["time"])
         message = log["msg"]
 
         if message == "completed":
             completed[task_id] = timestamp
 
-    return completed
+    return completed, tuple(crash)
 
 # From Worker
 def get_worker_data(logs):
@@ -82,19 +89,30 @@ def get_worker_data(logs):
 ## METRICS
 
 # Task Latency
-def get_latency(data):
+def get_latency(data, crash):
     latencies = []
     incomplete = []
+    start, end = crash
+    lps = defaultdict(list)
 
     # Subtract Timestamps to get Timedeltas
     for task_id, timestamps in data.items():
         if timestamps["done"] is not None:
             diff = timestamps["done"] - timestamps["submitted"]
             latencies.append(diff)
+
+            # Buckets for completed tasks' latencies per second
+            bucket = int((timestamps["done"] - start) / pd.Timedelta(seconds=1.0))
+            lps[bucket].append(diff)
         else:
             incomplete.append(task_id)
 
     latencies = pd.Series(latencies).sort_values()
+
+    # Get mean latency per second for graphing
+    for second, td_list in lps.copy().items():
+        mean_latency = sum([td.total_seconds() for td in td_list]) / len(td_list)
+        lps[second] = mean_latency
     
     latency_result = {
         "completed_count": len(latencies),
@@ -103,6 +121,7 @@ def get_latency(data):
         "max": latencies.max().total_seconds(),
         "mean": latencies.mean().total_seconds(),
         "std": latencies.std().total_seconds(),
+        "latency_per_second": lps,
     }
 
     return latency_result
@@ -179,11 +198,11 @@ def run_trial(trial_dir):
 
     # Data Extraction
     generator_data = get_generator_data(generator_logs)
-    scheduler_data = get_scheduler_data(scheduler_logs)
+    scheduler_data, crash = get_scheduler_data(scheduler_logs)
     worker_data = get_worker_data(worker_logs)
 
     # Get Metrics
-    latency = get_latency(generator_data)
+    latency = get_latency(generator_data, crash)
     throughput = get_throughput(scheduler_data)
     duplication = get_duplication(worker_data)
 
