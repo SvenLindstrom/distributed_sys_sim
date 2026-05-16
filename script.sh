@@ -1,25 +1,27 @@
 #!/bin/bash
 
 set -e
+source .env
 
-TRIALS=1
-TRIAL_DURATION=50
-LOGDIR="logs"
-RESULTS_DIR="results"
-WORKERS=10
-FOLLOWERS=2
+LOGDIR=$LOGPATH
 
 variants=(
 	"BASE"
 	"FAILOVER"
 	"ELECTION-REPLICATION"
 	)
+tps=(
+	"50"
+	"100"
+	"150"
+)
 
 runTrial(){
 	VARIANT=$1
 	LOGPATH=$2
+	CONF=$3
 
-	SETUP=$VARIANT LOGPATH=$LOGPATH docker compose up -d --scale worker=${WORKERS} --scale follower=${FOLLOWERS}
+	SETUP=$VARIANT LOGPATH=$LOGPATH  TASK_RATE=$CONF docker compose up -d --scale worker=${WORKERS} --scale follower=${FOLLOWERS}
 
 	echo "Trial will run for $TRIAL_DURATION seconds"
 	sleep $TRIAL_DURATION
@@ -28,17 +30,26 @@ runTrial(){
 }
 
 runVariant(){
-	VARIANT=$1
+	CONF=$1
+	VARIANT=$2
 	for i in $(seq 1 $TRIALS); do
 		echo "Running $VARIANT Trial #$i"
-		LOGPATH="$LOGDIR/$VARIANT/trial_$i"
+		LOGPATH="$LOGDIR/tps_$CONF/$VARIANT/trial_$i"
 		mkdir -p "$LOGPATH"
-		runTrial "$VARIANT" "$LOGPATH/"
+		runTrial "$VARIANT" "$LOGPATH" "$CONF"
 	done
 }
 
-for i in "${variants[@]}"; do
-	runVariant "$i"
+runConf(){
+	RATE=$1
+	for i in "${variants[@]}"; do
+		echo "Running config $RATE tps"
+		runVariant "$RATE" "$i"
+	done
+}
+
+for i in "${tps[@]}"; do
+	runConf "$i"
 done
 
 ## Data Analysis
