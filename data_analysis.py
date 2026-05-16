@@ -162,16 +162,16 @@ def get_latency(data, crash):
 
 
 # Task Throughput
-def get_throughput(data):
+def get_throughput(data, crash):
     timestamps = sorted(data.values())
     window = pd.Timedelta(seconds=1.0)
+    start, end = crash
 
     # Create buckets to keep track of TPS
-    t0 = timestamps[0]
     buckets = defaultdict(int)
 
     for ts in timestamps:
-        bucket = int((ts - t0) / window)
+        bucket = int((ts - start) / window)
         buckets[bucket] += 1
 
     duration = (timestamps[-1] - t0).total_seconds()
@@ -200,6 +200,8 @@ def get_duplication(data, crash):
     window = pd.Timedelta(seconds=30.0)
     start = crash[0]
     lower = crash[1] - crash[0]
+    # start = min([ts_list[0] for ts_list in data.values()])
+    # start, end = crash
 
     # All tasks that got assigned in the first minute
     in_window = {}
@@ -255,7 +257,7 @@ def run_trial(trial_dir):
 
     # Get Metrics
     latency = get_latency(generator_data, crash)
-    throughput = get_throughput(scheduler_data)
+    throughput = get_throughput(scheduler_data, crash)
     duplication = get_duplication(worker_data, crash)
 
     trial_result = {
