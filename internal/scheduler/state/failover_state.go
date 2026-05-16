@@ -44,7 +44,12 @@ func (rs *FailOverState) RegisterScheduler(id string, address string) error {
 	return nil
 }
 
+func (ss *FailOverState) ReAddTask(task *task.Task) error {
+	return ss.data.AddTask(task)
+}
+
 func (ss *FailOverState) AddTask(task *task.Task) error {
+	// println(len(ss.data.pendding))
 	return ss.data.AddTask(task)
 }
 

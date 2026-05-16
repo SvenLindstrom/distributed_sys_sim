@@ -57,8 +57,14 @@ func (s *RpcInterface) NotifiyGenerator() bool {
 	return ok
 }
 
+func (s *RpcInterface) ReCreateTask(task *task.Task, reply *bool) error {
+	err := s.CreateTask(task, reply)
+	return err
+}
+
 func (s *RpcInterface) CreateTask(task *task.Task, reply *bool) error {
 	// println("Task recived")
+
 	err := s.state.AddTask(task)
 	if err != nil {
 		return err

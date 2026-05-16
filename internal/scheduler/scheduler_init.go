@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-func InitScheduler(workerQueueSize int, taskQueueSize int) {
+func InitScheduler(workerQueueSize int) {
 	permutation := os.Getenv("SETUP")
 	if permutation == "" {
 		permutation = "BASE"
@@ -20,19 +20,19 @@ func InitScheduler(workerQueueSize int, taskQueueSize int) {
 		if leader == "" {
 			os.Exit(0)
 		}
-		NewSchedular(workerQueueSize, taskQueueSize)
+		NewSchedular(workerQueueSize)
 	case "ELECTION-REPLICATION":
 		println("In Raft")
-		NewSchedulerRaft(workerQueueSize, taskQueueSize)
+		NewSchedulerRaft(workerQueueSize)
 	case "FAILOVER":
 		println("In Failover")
-		newSchedulerFailover(workerQueueSize, taskQueueSize)
+		newSchedulerFailover(workerQueueSize)
 	}
 }
 
-func NewSchedular(workerQueueSize int, taskQueueSize int) Scheduler {
+func NewSchedular(workerQueueSize int) Scheduler {
 	workerManager := worker.NewWorkerManager(workerQueueSize)
-	state := state.NewSchedulerState(taskQueueSize)
+	state := state.NewSchedulerState()
 
 	rpc := NewRPC(workerManager, state)
 	s := NewScheduler(workerManager, state)
@@ -59,10 +59,10 @@ func leaderChange(leader <-chan bool, s *Scheduler, rpc *RpcInterface) {
 	}
 }
 
-func newSchedulerFailover(workerQueueSize int, taskQueueSize int) Scheduler {
+func newSchedulerFailover(workerQueueSize int) Scheduler {
 	workerManager := worker.NewWorkerManager(workerQueueSize)
 
-	fsm := state.NewSchedulerState(taskQueueSize)
+	fsm := state.NewSchedulerState()
 
 	r, err := NewRaft(fsm)
 
@@ -90,10 +90,10 @@ func newSchedulerFailover(workerQueueSize int, taskQueueSize int) Scheduler {
 	return s
 }
 
-func NewSchedulerRaft(workerQueueSize int, taskQueueSize int) Scheduler {
+func NewSchedulerRaft(workerQueueSize int) Scheduler {
 	workerManager := worker.NewWorkerManager(workerQueueSize)
 
-	fsm := state.NewSchedulerState(taskQueueSize)
+	fsm := state.NewSchedulerState()
 
 	r, err := NewRaft(fsm)
 

@@ -1,17 +1,18 @@
 package misc
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 )
 
 func Loginit(component string) (*os.File, error) {
 	path := os.Getenv("LOGPATH")
 
-	fileName := fmt.Sprintf("./%s%s.log", path, component)
+	fileName := component + ".log"
+	filePath := filepath.Join(path, fileName)
 
-	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, err
 	}

@@ -40,17 +40,16 @@ func (rs *RaftState) RegisterScheduler(id string, address string) error {
 		return errors.New("not leader")
 	}
 
-	f := rs.raft.AddVoter(raft.ServerID(id), raft.ServerAddress(address), 0, 5*time.Second)
+	err := rs.raft.AddVoter(raft.ServerID(id), raft.ServerAddress(address), 0, 5*time.Second).
+		Error()
 
-	if f.Error() != nil {
-		println(f.Error().Error())
+	if err != nil {
+		println(err.Error())
 	}
 
-	return nil
+	return err
 }
-
-func (rs *RaftState) AddTask(task *task.Task) error {
-
+func (rs *RaftState) ReAddTask(task *task.Task) error {
 	if rs.raft.State() != raft.Leader {
 		addrs, _ := rs.raft.LeaderWithID()
 		return errors.New(string(addrs))
@@ -62,11 +61,28 @@ func (rs *RaftState) AddTask(task *task.Task) error {
 	if err != nil {
 		panic(err)
 	}
-	var cmdd RaftCMD
-	json.Unmarshal(data, &cmdd)
 
-	rs.raft.Apply(data, 5*time.Second).Error()
-	return nil
+	return rs.raft.Apply(data, 5*time.Second).Error()
+}
+
+func (rs *RaftState) AddTask(task *task.Task) error {
+	if rs.raft.State() != raft.Leader {
+		addrs, _ := rs.raft.LeaderWithID()
+		return errors.New(string(addrs))
+	}
+
+	for len(rs.data.pendding) > 50 {
+		time.Sleep(time.Second)
+	}
+
+	cmd := RaftCMD{Op: "ADD", Task: task}
+	data, err := json.Marshal(cmd)
+
+	if err != nil {
+		panic(err)
+	}
+
+	return rs.raft.Apply(data, 5*time.Second).Error()
 }
 
 func (rs *RaftState) NextTask() *task.Task {
@@ -74,15 +90,15 @@ func (rs *RaftState) NextTask() *task.Task {
 }
 
 func (rs *RaftState) AssignedTask(task *task.Task, workerId string) error {
+	// println(len(rs.data.pendding))
 	cmd := RaftCMD{Op: "ASSIGN", Task: task, WorkerId: workerId}
 	data, err := json.Marshal(cmd)
 
 	if err != nil {
 		panic(err)
 	}
-	
-	rs.raft.Apply(data, 5*time.Second).Error()
-	return nil
+
+	return rs.raft.Apply(data, 5*time.Second).Error()
 }
 
 func (rs *RaftState) CompleteTask(taskId string, workerId string) error {
@@ -93,8 +109,7 @@ func (rs *RaftState) CompleteTask(taskId string, workerId string) error {
 		panic(err)
 	}
 
-	rs.raft.Apply(data, 5*time.Second).Error()
-	return nil
+	return rs.raft.Apply(data, 5*time.Second).Error()
 }
 
 func (rs *SchedulerState) Apply(log *raft.Log) interface{} {
@@ -144,7 +159,7 @@ func (rs *SchedulerState) Snapshot() (raft.FSMSnapshot, error) {
 	pendding := make([]*task.Task, len(rs.pendding))
 	copy(pendding, rs.pendding)
 
-	running := make(map[string]*task.Task, len(rs.running))
+	running := make(map[string]string, len(rs.running))
 	for k, v := range rs.running {
 		running[k] = v
 	}

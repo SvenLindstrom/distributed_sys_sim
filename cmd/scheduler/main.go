@@ -18,11 +18,6 @@ func main() {
 	}
 	defer f.Close()
 
-	jobQueueSize, err := strconv.Atoi(os.Getenv("JOB_Q_SIZE"))
-	if err != nil {
-		log.Println("job q size not set")
-		jobQueueSize = 3
-	}
 	workerQueueSize, err := strconv.Atoi(os.Getenv("WORKER_Q_SIZE"))
 	if err != nil {
 		log.Println("worker q size not set")
@@ -34,7 +29,7 @@ func main() {
 	// scheduler.NewSchedular(workerQueueSize, jobQueueSize)
 	// scheduler.NewSchedulerRaft(workerQueueSize, jobQueueSize)
 
-	scheduler.InitScheduler(workerQueueSize, jobQueueSize)
+	scheduler.InitScheduler(workerQueueSize)
 
 	leader := os.Getenv("LEADER")
 	if leader == "true" {
