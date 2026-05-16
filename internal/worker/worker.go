@@ -9,6 +9,7 @@ import (
 	"net/rpc"
 	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -35,6 +36,7 @@ type Worker struct {
 	state           WorkerState
 	currentTask     string
 	schedulerClient network.RPCClient
+	mu              sync.Mutex
 }
 
 func NewWorker(address string, schedulers []string) *Worker {
@@ -121,6 +123,8 @@ func (w *Worker) executeTask(task task.Task) {
 // requests to Scheduler
 
 func (w *Worker) registerWorker() (*RegistrationReply, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	// call Scheduler to register Worker
 	var rr RegistrationReply
 	err := w.schedulerClient.Call("Scheduler.RegisterWorker", &w.address, &rr)
@@ -188,6 +192,8 @@ func (w *Worker) retryRegistration() error {
 }
 
 func (w *Worker) completeTask(taskID string) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	// define TaskResult
 	args := task.TaskResult{
 		TaskID:   taskID,

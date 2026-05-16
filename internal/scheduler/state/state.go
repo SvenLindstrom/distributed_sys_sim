@@ -39,13 +39,9 @@ func (ss *SchedulerState) AddTask(task *task.Task) error {
 func (ss *SchedulerState) NextTask() *task.Task {
 	ss.mu.Lock()
 	defer ss.mu.Unlock()
-	// if len(ss.pendding) != 0 {
-	// 	return nil
-	// }
 
 	for _, t := range ss.pendding {
 		if !ss.reserved[t.ID] {
-			println(len(ss.pendding))
 			ss.reserved[t.ID] = true
 			return t
 		}
@@ -76,8 +72,6 @@ func (ss *SchedulerState) CompleteTask(taskId string, workerId string) error {
 	if task := ss.running[workerId]; task != nil {
 		if task.ID == taskId {
 			delete(ss.running, workerId)
-		} else {
-			println("AAAAAAAAAAAAAAAAAAAAA")
 		}
 		return nil
 	}

@@ -85,7 +85,6 @@ func (g *Generator) checkReSub() {
 		var ok bool
 
 		list := g.taskTable.GetCopy()
-		println(len(list))
 		for _, t := range list {
 			if time.Now().Sub(t.Submit_time) > g.timout*time.Second {
 				if !g.taskTable.Missing(t.Task.ID) {
@@ -96,7 +95,6 @@ func (g *Generator) checkReSub() {
 				if err != nil {
 					break
 				}
-				println("re doooooone")
 				g.taskTable.ReSubmit(t)
 
 				slog.Info(

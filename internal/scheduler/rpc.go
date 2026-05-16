@@ -77,7 +77,6 @@ func (s *RpcInterface) CreateTask(task *task.Task, reply *bool) error {
 func (s *RpcInterface) notifyTaskCompleted(id string) {
 	var ok bool
 	s.client.Call("Generator.TaskCompleted", &id, &ok)
-	// println("Task send")
 }
 
 func (s *RpcInterface) CompleteTask(args *task.TaskResult, reply *bool) error {
@@ -85,19 +84,17 @@ func (s *RpcInterface) CompleteTask(args *task.TaskResult, reply *bool) error {
 		return errors.New("Not Leader")
 	}
 
-	// println("Task completed")
 	err := s.state.CompleteTask(args.TaskID, args.WorkerID)
 	if err != nil {
 		println(err.Error())
 		*reply = false
-		return nil
+		return err
 	}
 
 	s.workers.TaskCompleted(args.WorkerID)
 	*reply = true
 
 	go s.notifyTaskCompleted(args.TaskID)
-
 	slog.Info(
 		"completed",
 		"type",
@@ -109,6 +106,7 @@ func (s *RpcInterface) CompleteTask(args *task.TaskResult, reply *bool) error {
 		"success",
 		args.Status,
 	)
+
 	return nil
 }
 

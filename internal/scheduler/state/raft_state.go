@@ -71,17 +71,6 @@ func (rs *RaftState) AddTask(task *task.Task) error {
 
 func (rs *RaftState) NextTask() *task.Task {
 	return rs.data.NextTask()
-	// if len(rs.data.pendding) == 0 {
-	// 	return &task.Task{}, false
-	// }
-	//
-	// t := rs.data.pendding[0]
-	// if t == nil {
-	// 	println("AAAAAAAAAAAAAA")
-	// 	println(len(rs.data.pendding))
-	// }
-	//
-	// return t, true
 }
 
 func (rs *RaftState) AssignedTask(task *task.Task, workerId string) error {
@@ -91,7 +80,7 @@ func (rs *RaftState) AssignedTask(task *task.Task, workerId string) error {
 	if err != nil {
 		panic(err)
 	}
-
+	
 	rs.raft.Apply(data, 5*time.Second).Error()
 	return nil
 }

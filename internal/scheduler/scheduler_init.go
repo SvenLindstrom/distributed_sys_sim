@@ -9,7 +9,7 @@ import (
 
 func InitScheduler(workerQueueSize int, taskQueueSize int) {
 	permutation := os.Getenv("SETUP")
-	if permutation == ""{
+	if permutation == "" {
 		permutation = "BASE"
 	}
 
@@ -39,6 +39,7 @@ func NewSchedular(workerQueueSize int, taskQueueSize int) Scheduler {
 
 	go s.Run()
 	rpc.Start()
+
 	rpc.NotifiyGenerator()
 
 	return s

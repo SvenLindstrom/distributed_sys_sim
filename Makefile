@@ -1,4 +1,4 @@
-WORKERS ?= 3
+WORKERS ?= 10
 FOLLOWERS ?= 2
 
 start:
