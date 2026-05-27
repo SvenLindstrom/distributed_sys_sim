@@ -176,6 +176,7 @@ func (w *Worker) retryRegistration() error {
 			newLeaderAddr := strings.Split(rr.Addr, ":")[0] + ":" + os.Getenv("SCHEDULER_PORT")
 			if strings.Compare(newLeaderAddr, w.leaderAddr) != 0 {
 				w.getClient(newLeaderAddr)
+				continue
 			}
 		default:
 			return err
