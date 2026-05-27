@@ -57,9 +57,8 @@ services:
     env_file: "./.env"
     environment:
       - LOGPATH=${LOGPATH}
+      - TASK_RATE=${TASK_RATE}
     cap_add:
       - NET_ADMIN
     volumes:
       - ./logs/:/app/logs
-      - ./start.sh:/app/start.sh
-    command: ["/app/start.sh"]

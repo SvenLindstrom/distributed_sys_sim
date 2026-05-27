@@ -1,63 +1,67 @@
 package generator
 
 import (
+	"container/heap"
 	"dssim/internal/task"
 	"sync"
 	"time"
 )
 
 type TaskRec struct {
-	Task        task.Task
-	Submit_time time.Time
-	sub_count   int
-	done        bool
+	Task       task.Task
+	reSubCount int
 }
 
 type TaskTable struct {
-	Tasks map[string]*TaskRec
-	mu    sync.Mutex
+	Tasks   map[string]*TaskRec
+	mu      sync.Mutex
+	pq      *PriorityQueue
+	timeout time.Duration
 }
 
-func (jt *TaskTable) Missing(id string) bool {
-	jt.mu.Lock()
-	missing := jt.Tasks[id] != nil
-	jt.mu.Unlock()
-	return missing
+func NewTaskTable(timeout time.Duration) TaskTable {
+	pq := make(PriorityQueue, 0)
+	heap.Init(&pq)
+	tasks := make(map[string]*TaskRec)
+	return TaskTable{Tasks: tasks, pq: &pq, timeout: timeout}
 }
 
-func (jt *TaskTable) GetCopy() map[string]*TaskRec {
+func (jt *TaskTable) Exists(id string) bool {
 	jt.mu.Lock()
-	taskCopy := make(map[string]*TaskRec, len(jt.Tasks))
-	for id, job := range jt.Tasks {
-		taskCopy[id] = job
-	}
-	jt.mu.Unlock()
-	return taskCopy
+	defer jt.mu.Unlock()
+	return jt.Tasks[id] != nil
 }
 
-func (jt *TaskTable) TaskDone(id string) {
-	jt.mu.Lock()
-	jt.Tasks[id].done = true
-	jt.mu.Unlock()
-}
+// func (jt *TaskTable) GetCopy() map[string]*task.Task {
+// jt.mu.Lock()
+// defer jt.mu.Unlock()
+// taskCopy := make(map[string]*task.Task, len(jt.Tasks))
+// for id, job := range jt.Tasks {
+// 	taskCopy[id] = job
+// }
+// return taskCopy
+// }
 
-func (jt *TaskTable) RemoveTask(taskID *string) {
+func (jt *TaskTable) RemoveTask(taskID *string) *TaskRec {
 	jt.mu.Lock()
+	defer jt.mu.Unlock()
+	t := jt.Tasks[*taskID]
 	delete(jt.Tasks, *taskID)
-	jt.mu.Unlock()
+	return t
 }
 
-func (jt *TaskTable) ReSubmit(taskRec *TaskRec) {
-	taskRec.sub_count += 1
-	taskRec.Submit_time = time.Now()
-	jt.mu.Lock()
-	jt.Tasks[taskRec.Task.ID] = taskRec
-	jt.mu.Unlock()
+func (jt *TaskTable) ReSubmit(taskRec *task.Task) {
+	// jt.mu.Lock()
+	// defer jt.mu.Unlock()
+	// taskRec.Submit_time = time.Now()
+	// jt.Tasks[taskRec.Task.ID] = taskRec
 }
 
 func (jt *TaskTable) TaskSubmitted(task task.Task) {
-	taskRec := TaskRec{task, time.Now(), 1, false}
 	jt.mu.Lock()
+	defer jt.mu.Unlock()
+	taskRec := TaskRec{Task: task, reSubCount: 0}
 	jt.Tasks[task.ID] = &taskRec
-	jt.mu.Unlock()
+	i := Item{task: &taskRec, retryAt: time.Now().Add(jt.timeout * time.Second)}
+	heap.Push(jt.pq, &i)
 }

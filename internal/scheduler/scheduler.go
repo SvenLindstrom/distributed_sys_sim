@@ -26,13 +26,10 @@ func NewScheduler(
 }
 
 func (s *Scheduler) sendTask(t *task.Task, w *worker.Worker) {
-	// start := time.Now()
 	err := s.state.AssignedTask(t, w.ID)
 	if err != nil {
-		println(err.Error())
 		return
 	}
-	// fmt.Printf("apply took %v\n", time.Since(start))
 
 	ok := w.AssignTask(t)
 	slog.Info(

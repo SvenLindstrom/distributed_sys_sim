@@ -1,9 +1,9 @@
 package generator
 
 import (
+	"container/heap"
 	"dssim/internal/network"
 	"dssim/internal/task"
-	"fmt"
 	"log"
 	"log/slog"
 	"os"
@@ -17,6 +17,8 @@ type Generator struct {
 	taskTable TaskTable
 	start     chan bool
 	client    *network.RPCClient
+	sem       chan struct{}
+	sem2      chan struct{}
 }
 
 func NewGenerator(duration int, interval Interval, timeout int) Generator {
@@ -24,9 +26,11 @@ func NewGenerator(duration int, interval Interval, timeout int) Generator {
 		duration,
 		interval,
 		time.Duration(timeout),
-		TaskTable{Tasks: make(map[string]*TaskRec)},
+		NewTaskTable(time.Duration(timeout)),
 		make(chan bool),
 		nil,
+		make(chan struct{}, 100),
+		make(chan struct{}, 100),
 	}
 
 	return g
@@ -34,14 +38,22 @@ func NewGenerator(duration int, interval Interval, timeout int) Generator {
 
 func (g *Generator) TaskCompleted(taskId *string, ok *bool) error {
 	// g.taskTable.TaskDone(*taskId)
-	g.taskTable.RemoveTask(taskId)
+	t := g.taskTable.RemoveTask(taskId)
 	*ok = true
+	var count int
+	if t != nil {
+		count = t.reSubCount
+	} else {
+		count = -1
+	}
 	slog.Info(
 		"done",
 		"type",
 		"task",
 		"taskID",
 		*taskId,
+		"retryCount",
+		count,
 	)
 	return nil
 }
@@ -79,36 +91,134 @@ func (g *Generator) ReadyForWork(address *string, ok *bool) error {
 	return nil
 }
 
+type Item struct {
+	task    *TaskRec
+	retryAt time.Time
+	index   int
+}
+
+type PriorityQueue []*Item
+
+func (pq PriorityQueue) Len() int {
+	return len(pq)
+}
+
+func (pq PriorityQueue) Less(i, j int) bool {
+	return pq[i].retryAt.Before(pq[j].retryAt)
+}
+
+func (pq PriorityQueue) Swap(i, j int) {
+	pq[i], pq[j] = pq[j], pq[i]
+	pq[i].index = i
+	pq[j].index = j
+}
+
+func (pq PriorityQueue) Peek() *Item {
+	if pq.Len() == 0 {
+		return nil
+	}
+
+	i := pq[0]
+	return i
+}
+
+func (pq *PriorityQueue) update(item *Item, value *TaskRec, priority time.Time) {
+	item.task = value
+	item.retryAt = priority
+	heap.Fix(pq, item.index)
+}
+
+func (pq *PriorityQueue) Push(x interface{}) {
+	n := len(*pq)
+	item := x.(*Item)
+	item.index = n
+	*pq = append(*pq, item)
+}
+
+func (pq *PriorityQueue) Pop() interface{} {
+	old := *pq
+	n := len(old)
+	item := old[n-1]
+	old[n-1] = nil
+	item.index = -1
+	*pq = old[0 : n-1]
+	return item
+}
+
+func (g *Generator) reSend(t *Item) {
+
+	var ok bool
+	err := (*g.client).Call("Scheduler.CreateTask", t.task.Task, &ok)
+	if err != nil {
+		g.taskTable.mu.Lock()
+		defer g.taskTable.mu.Unlock()
+		heap.Push(g.taskTable.pq, t)
+		return
+	}
+
+	g.taskTable.mu.Lock()
+	defer g.taskTable.mu.Unlock()
+	t.task.reSubCount += 1
+	println("-------------------------")
+	slog.Info(
+		"re-submitted",
+		"type",
+		"task",
+		"taskID",
+		t.task.Task.ID,
+		"retryCount",
+		t.task.reSubCount,
+	)
+
+	newTime := time.Now().Add(g.timout * time.Second)
+	t.retryAt = newTime
+
+	heap.Push(g.taskTable.pq, t)
+
+}
+
 func (g *Generator) checkReSub() {
 	for {
-		c := *g.client
-		var ok bool
+		pq := g.taskTable.pq
+		t := pq.Peek()
 
-		list := g.taskTable.GetCopy()
-		println(len(list))
-		for _, t := range list {
-			if time.Now().Sub(t.Submit_time) > g.timout*time.Second {
-				if !g.taskTable.Missing(t.Task.ID) {
-					continue
-				}
-				fmt.Printf("%+v, time now %+v \n", t, time.Now())
-				err := c.Call("Scheduler.CreateTask", t.Task, &ok)
-				if err != nil {
-					break
-				}
-				println("re doooooone")
-				g.taskTable.ReSubmit(t)
-
-				slog.Info(
-					"re-submitted",
-					"type",
-					"task",
-					"taskID",
-					t.Task.ID,
-				)
-			}
+		if t == nil {
+			time.Sleep(1 * time.Second)
+			continue
 		}
-		time.Sleep(1 * time.Second)
+
+		now := time.Now()
+		if now.Before(t.retryAt) {
+			time.Sleep(t.retryAt.Sub(now))
+		}
+
+		if !g.taskTable.Exists(t.task.Task.ID) {
+			heap.Pop(pq)
+			continue
+		}
+
+		var ok bool
+		err := (*g.client).Call("Scheduler.CreateTask", t.task.Task, &ok)
+		if err != nil {
+			continue
+		}
+
+		g.taskTable.mu.Lock()
+		t.task.reSubCount += 1
+		slog.Info(
+			"re-submitted",
+			"type",
+			"task",
+			"taskID",
+			t.task.Task.ID,
+			"retryCount",
+			t.task.reSubCount,
+		)
+
+		newTime := time.Now().Add(g.timout * time.Second)
+		pq.update(t, t.task, newTime)
+
+		g.taskTable.mu.Unlock()
 	}
 }
 
@@ -126,38 +236,26 @@ func (g *Generator) send(t *task.Task) error {
 		"task",
 		"taskID",
 		t.ID,
+		"retryCount",
+		0,
 	)
 	return nil
 }
 
 func (g *Generator) Run() {
-	sem := make(chan struct{}, 100)
 	for {
-		// c := *g.client
-
 		t, err := task.CreateTask(g.duration)
 		if err != nil {
 			continue
 		}
 
-		// var ok bool
-		// err = c.Call("Scheduler.CreateTask", task, &ok)
-		// if err != nil {
-		// 	continue
-		// }
-		//
-		// g.taskTable.TaskSubmitted(*task)
-
-		sem <- struct{}{}
+		g.sem <- struct{}{}
 
 		go func(t *task.Task) {
-			defer func() { <-sem }()
+			defer func() { <-g.sem }()
 			g.send(t)
 		}(t)
 
-		// go g.send(task)
-
 		time.Sleep(g.interval.GetInterval())
-		// time.Sleep(10 * time.Second)
 	}
 }
